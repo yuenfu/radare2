@@ -385,6 +385,10 @@ static void get_strings_range(RBinFile *arch, RList *list, int min, ut64 from, u
 	RBinString *ptr;
 	RListIter *it;
 
+	if (to < from) {
+		eprintf ("WARNING: get_strings_range: to < from\n");
+		return;
+	}
 	if (!arch || !arch->buf || !arch->buf->buf) {
 		return;
 	}
@@ -403,13 +407,22 @@ static void get_strings_range(RBinFile *arch, RList *list, int min, ut64 from, u
 	if (min < 0) {
 		return;
 	}
-	if (!to || to > arch->buf->length) {
-		to = arch->buf->length;
+#if 1
+	if (!to || (to - from) > arch->buf->length) {
+		// hack for the fatmach0 va/pa issue
+		ut64 ba = arch->buf->base;
+		ut64 bl = arch->buf->length;
+		to = from - ba + bl;
+	}
+#endif
+	if (to < from) {
+		eprintf ("WARNING: get_strings_range: to < from\n");
+		return;
 	}
 	if (arch->rawstr != 2) {
-		ut64 size = to - from;
+		st64 size = to - from;
 		// in case of dump ignore here
-		if (arch->rbin->maxstrbuf && size && size > arch->rbin->maxstrbuf) {
+		if (size < 0 || (arch->rbin->maxstrbuf && size && size > arch->rbin->maxstrbuf)) {
 			if (arch->rbin->verbose) {
 				eprintf ("WARNING: bin_strings buffer is too big "
 					"(0x%08" PFMT64x
@@ -424,10 +437,15 @@ static void get_strings_range(RBinFile *arch, RList *list, int min, ut64 from, u
 	if (string_scan_range (list, arch->buf->buf, min, from, to, -1) < 0) {
 		return;
 	}
+	RBinSection *s = NULL;
 	r_list_foreach (list, it, ptr) {
-		RBinSection *s = r_bin_get_section_at (arch->o, ptr->paddr, false);
+		ut64 pa = ptr->paddr;
+		if (!s || pa < s->paddr || pa >= (s->paddr + s->size)) {
+			s = r_bin_get_section_at (arch->o, pa, false);
+		}
 		if (s) {
 			ptr->vaddr = s->vaddr + (ptr->paddr - s->paddr);
+			// ptr->vaddr -= arch->loadaddr;
 		}
 	}
 }
@@ -999,14 +1017,16 @@ R_API int r_bin_reload(RBin *bin, int fd, ut64 baseaddr) {
 	if (r_list_length (the_obj_list) == 1) {
 		RBinObject *old_o = (RBinObject *)r_list_get_n (the_obj_list, 0);
 		res = r_bin_load_io_at_offset_as (bin, fd, baseaddr,
-						old_o->loadaddr, 0, old_o->boffset, NULL);
+				old_o->loadaddr, 0, old_o->boffset, NULL);
 	} else {
 		RListIter *iter = NULL;
 		RBinObject *old_o;
+		int idx = 0;
 		r_list_foreach (the_obj_list, iter, old_o) {
 			// XXX - naive. do we need a way to prevent multiple "anys" from being opened?
 			res = r_bin_load_io_at_offset_as (bin, fd, baseaddr,
-				old_o->loadaddr, 0, old_o->boffset, old_o->plugin->name);
+					old_o->loadaddr, idx, old_o->boffset, old_o->plugin->name);
+			idx ++;
 		}
 	}
 	bf->o = r_list_get_n (bf->objs, 0);
@@ -1247,15 +1267,43 @@ static RBinFile *r_bin_file_xtr_load_bytes(RBin *bin, RBinXtrPlugin *xtr,
 	if (xtr && bytes) {
 		RList *xtr_data_list = xtr->extractall_from_bytes (bin, bytes, sz);
 		RListIter *iter;
-		RBinXtrData *xtr;
+		RBinXtrData *xtr = NULL;
 		//populate xtr_data with baddr and laddr that will be used later on
 		//r_bin_file_object_new_from_xtr_data
+#if 1
+		int i = 0;
+		// TODO: use r_list_get_n
 		r_list_foreach (xtr_data_list, iter, xtr) {
+			if (idx == i) {
+#if 0
+				if (xtr->metadata->bits == 64) {
+					loadaddr = 0x13000;
+				} else {
+					loadaddr = 0x13000;
+					loadaddr += 0x4000;
+				}
+				xtr->baddr = baseaddr? baseaddr : UT64_MAX;
+				xtr->laddr = loadaddr? loadaddr : UT64_MAX;
+#endif
+			}
+			// always load the last object? that seems wrong
 			xtr->baddr = baseaddr? baseaddr : UT64_MAX;
 			xtr->laddr = loadaddr? loadaddr : UT64_MAX;
+			i++;
 		}
+#endif
+#if 0
+		if (xtr) {
+			if (xtr->metadata->bits == 64) {
+				loadaddr = 0x13000;
+			} else {
+				loadaddr = 0x13000;
+				loadaddr += 0x4000;
+			}
+		}
+#endif
 		bf->loadaddr = loadaddr;
-		bf->xtr_data = xtr_data_list ? xtr_data_list : NULL;
+		bf->xtr_data = xtr_data_list;
 	}
 	return bf;
 }
@@ -2106,12 +2154,14 @@ R_API RBinFile *r_bin_file_find_by_arch_bits(RBin *bin, const char *arch,
 			continue;
 		}
 		// look for sub-bins in Xtr Data and Load if we need to
+		int idx = 0;
 		r_list_foreach (binfile->xtr_data, iter_xtr, xtr_data) {
 			if (xtr_data->metadata && xtr_data->metadata->arch) {
 				char *iter_arch = xtr_data->metadata->arch;
 				int iter_bits = xtr_data->metadata->bits;
 				if (bits == iter_bits && !strcmp (iter_arch, arch)) {
 					if (!xtr_data->loaded) {
+						// xtr_data->laddr = xtr_data->baddr;
 						if (!r_bin_file_object_new_from_xtr_data (
 							    bin, binfile, xtr_data->baddr,
 							    xtr_data->laddr, xtr_data)) {
@@ -2121,6 +2171,7 @@ R_API RBinFile *r_bin_file_find_by_arch_bits(RBin *bin, const char *arch,
 					}
 				}
 			}
+			idx ++;
 		}
 	}
 	return binfile;

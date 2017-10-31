@@ -728,7 +728,7 @@ static bool r_bin_mdmp_init_pe_bins(struct r_bin_mdmp_obj *obj) {
 		if (!(paddr = r_bin_mdmp_get_paddr (obj, module->base_of_image))) {
 			continue;
 		}
-		ut32 left = 0;
+		int left = 0;
 		const ut8 *b = r_buf_get_at (obj->b, paddr, &left);
 		buf = r_buf_new_with_bytes (b, R_MIN (left, module->size_of_image));
 		dup = false;
