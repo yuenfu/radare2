@@ -7,121 +7,371 @@
 #include "ba_ops.h"
 #include "ba_disas.h"
 
-char *inst0 [5][8] =
+char *reg [][4] =
 {
-"bt.movi",
-"bt.addi",
-"bt.mov",
-"bt.add",
-"bt.j",
+    "r0", "r1", "r2", "r3",
+    "r4", "r5", "r6", "r7",
+    "r8", "r9", "r10", "r11",
+    "r12", "r13", "r14", "r15",
+    "r16", "r17", "r18", "r19",
+    "r20", "r21", "r22", "r23",
+    "r24", "r25", "r26", "r27",
+    "r28", "r29", "r30", "r31",
+};
+
+/*
+ * bt: 2B inst
+ * bn: 3B inst
+ * bg: 4B inst
+ * bw: 6B inst
+ */
+char *inst2 [][7] =
+{
+    "bn.lbz",
+    "bn.ld",
+    "bn.lhz",
+    "bn.lws",
+    "bn.lwz",
+    "bn.sb",
+    "bn.sd",
+    "bn.sh",
+    "bn.sw",
+};
+
+char *inst3 [][10] =
+{
+    "bn.addi",
+    "bn.andi",
+    "bn.bitrev",
+    "bn.clz",
+    "bn.extbs",
+    "bn.extbz",
+    "bn.exths",
+    "bn.exthz",
+    "bn.ff1",
+    "bn.mfspr",
+    "bn.mtspr",
+    "bn.ori",
+    "bn.sfeq",
+    "bn.sfeqi",
+    "bn.sfges",
+    "bn.sfgesi",
+    "bn.sfgeu",
+    "bn.sfgeui",
+    "bn.sfgts",
+    "bn.sfgtsi",
+    "bn.sfgtu",
+    "bn.sfgtui",
+    "bn.sflesi",
+    "bn.sfleui",
+    "bn.sfltsi",
+    "bn.sfltui",
+    "bn.sfne",
+    "bn.sfnei",
+    "bn.swab",
+};
+
+char *inst4 [][10] =
+{
+    "bn.bc",
+    "bn.beqi",
+    "bn.bf",
+    "bn.bgesi",
+    "bn.bgtsi",
+    "bn.blesi",
+    "bn.bltsi",
+    "bn.bnc",
+    "bn.bnei",
+    "bn.bnf",
+    "bn.bno",
+    "bn.bo",
+    "bn.entri",
+    "bn.j",
+    "bn.jal",
+    "bn.jalr",
+    "bn.jr",
+    "bn.reti",
+    "bn.return",
+    "bn.rtnei",
+};
+
+char *inst5 [][8] =
+{
+    "bn.lwza",
+    "bn.mlwz",
+};
+
+char *inst6 [][11] =
+{
+    "bn.aadd",
+    "bn.add",
+    "bn.addc",
+    "bn.and",
+    "bn.cmov",
+    "bn.cmpxchg",
+    "bn.div",
+    "bn.divu",
+    "bn.flb",
+    "bn.nand",
+    "bn.or",
+    "bn.ror",
+    "bn.rori",
+    "bn.sll",
+    "bn.slli",
+    "bn.sra",
+    "bn.srai",
+    "bn.srl",
+    "bn.srli",
+    "bn.sub",
+    "bn.subb",
+    "bn.xor",
+};
+
+char *inst7 [][8] =
+{
+    "bn.adds",
+    "bn.subs",
+};
+
+char *inst8 [][7] =
+{
+    "bw.lbz",
+    "bw.ld",
+    "bw.lhz",
+    "bw.lws",
+    "bw.lwz",
+    "bw.sb",
+    "bw.sd",
+    "bw.sh",
+    "bw.sw",
+};
+
+char *inst9 [][10] =
+{
+    "bw.addi",
+    "bw.andi",
+    "bw.ori",
+    "bw.sfeqi",
+    "bw.sfgesi",
+    "bw.sfgeui",
+    "bw.sfgtsi",
+    "bw.sfgtui",
+    "bw.sflesi",
+    "bw.sfleui",
+    "bw.sfltsi",
+    "bw.sfltui",
+    "bw.sfnei",
+};
+
+char *insta [][9] =
+{
+    "bw.addci",
+    "bw.beq",
+    "bw.beqi",
+    "bw.bf",
+    "bw.bges",
+    "bw.bgesi",
+    "bw.bgeu",
+    "bw.bgeui",
+    "bw.bgts",
+    "bw.bgtsi",
+    "bw.bgtu",
+    "bw.bgtui",
+    "bw.blesi",
+    "bw.bleui",
+    "bw.bltsi",
+    "bw.bltui",
+    "bw.bne",
+    "bw.bnei",
+    "bw.bnf",
+    "bw.j",
+    "bw.ja",
+    "bw.jal",
+    "bw.jma",
+    "bw.jmal",
+    "bw.lma",
+    "bw.mfspr",
+    "bw.mtspr",
+    "bw.sma",
+    "bw.xori",
+};
+
+char *instc [][7] =
+{
+    "bg.lbz",
+    "bg.ld",
+    "bg.lhz",
+    "bg.lws",
+    "bg.lwz",
+    "bg.sb",
+    "bg.sd",
+    "bg.sh",
+    "bg.sw",
+};
+
+char *instd [][7] =
+{
+    "bg.addi",
+    "bg.beq",
+    "bg.beqi",
+    "bg.bf",
+    "bg.bges",
+    "bg.bgesi",
+    "bg.bgeu",
+    "bg.bgeui",
+    "bg.bgts",
+    "bg.bgtsi",
+    "bg.bgtu",
+    "bg.bgtui",
+    "bg.blesi",
+    "bg.bleui",
+    "bg.bltsi",
+    "bg.bltui",
+    "bg.bne",
+    "bg.bnei",
+    "bg.bnf",
+    "bg.j",
+    "bg.jal",
+};
+
+char *inst0 [][8] =
+{
+    "bt.add",
+    "bt.addi",
+    "bt.di",
+    "bt.ei",
+    "bt.j",
+    "bt.mov",
+    "bt.movi",
+    "bt.nop",
+    "bt.sys",
+    "bt.trap",
+};
+
+void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+{
+    int i;
+    ut8 opc = (*buf)>>2;
+    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>2 ;
+    ut8 rb = (*(buf+1))&0x1F;
+
+    switch (opc) {
+        case 3:
+            {
+            ut16 iv = ((*buf)&0x3)<<8 | *(buf+1);
+            i = 4; //j
+            op->size = 2;
+            strcpy(op->buf_asm, inst0[i]);
+            }
+            break;
+        case 2:
+            i = 0; //add
+            break;
+        case 1:
+            i = 5; //mov
+            break;
+    }
 }
 
-
-void disas0(RAsmOp *op)
-{
-    op->size = 2;
-    strcpy(op->buf_asm, str);
-}
-
-void disas1(RAsmOp *op)
+void disas1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 0;
 }
 
-void disas2(RAsmOp *op)
+void disas2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas3(RAsmOp *op)
+void disas3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas4(RAsmOp *op)
+void disas4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas5(RAsmOp *op)
+void disas5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas6(RAsmOp *op)
+void disas6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas7(RAsmOp *op)
+void disas7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 3;
 }
 
-void disas8(RAsmOp *op)
+void disas8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 6;
 }
 
-void disas9(RAsmOp *op)
+void disas9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 6;
 }
 
-void disasa(RAsmOp *op)
+void disasa(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 6;
 }
 
-void disasb(RAsmOp *op)
+void disasb(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    op->size = 6;
+    op->size = 0;
 }
 
-void disasc(RAsmOp *op)
+void disasc(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 4;
 }
 
-void disasd(RAsmOp *op)
+void disasd(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     op->size = 4;
 }
 
-void disase(RAsmOp *op)
+void disase(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    op->size = 6;
+    op->size = 0;
 }
 
-void disasf(RAsmOp *op)
+void disasf(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    op->size = 3;
+    op->size = 0;
 }
 
-void (*ba22_inst_decode[16])(RAsmOp *op) = 
+void (*ba22_inst_decode[16])(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) =
 {
-disas0,
-disas1,
-disas2,
-disas3,
-disas4,
-disas5,
-disas6,
-disas7,
-disas8,
-disas9,
-disasa,
-disasb,
-disasc,
-disasd,
-disase,
-disasf,
+    disas0,
+    disas1,
+    disas2,
+    disas3,
+    disas4,
+    disas5,
+    disas6,
+    disas7,
+    disas8,
+    disas9,
+    disasa,
+    disasb,
+    disasc,
+    disasd,
+    disase,
+    disasf,
 };
 
 int _ba_disas (RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) {
     int len_code = (*buf)>>4;
 
-    ba22_inst_decode[len_code](op);
+    ba22_inst_decode[len_code](a, op, buf, len);
 
     printf("buf=%x len=%d\n", buf, len);
     return op->size;
