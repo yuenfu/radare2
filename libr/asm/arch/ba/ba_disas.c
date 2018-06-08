@@ -7,7 +7,7 @@
 #include "ba_ops.h"
 #include "ba_disas.h"
 
-char *reg [][4] =
+char *reg [] =
 {
     "r0", "r1", "r2", "r3",
     "r4", "r5", "r6", "r7",
@@ -234,6 +234,27 @@ char *instd [] =
     "bg.jal",
 };
 
+/*
+ * arg0: original value
+ * arg1: effective bit
+ */
+static ut32 extend_signed(ut32 n, ut32 s)
+{
+    // 1. bit reverse
+    n = (n >> 1) & 0x55555555 | (n << 1) & 0xaaaaaaaa;
+    n = (n >> 2) & 0x33333333 | (n << 2) & 0xcccccccc;
+    n = (n >> 4) & 0x0f0f0f0f | (n << 4) & 0xf0f0f0f0;
+    n = (n >> 8) & 0x00ff00ff | (n << 8) & 0xff00ff00;
+    n = (n >> 16) & 0x0000ffff | (n << 16) & 0xffff0000;
+    n>>=(32-s);
+
+    // 2. sign extesion
+    if (n & 1<<(s-1)) {
+        n |= ~((1<<s)-1);
+    }
+    return n;
+}
+
 char *inst0 [] =
 {
     "bt.add",
@@ -244,6 +265,7 @@ char *inst0 [] =
     "bt.mov",
     "bt.movi",
     "bt.nop",
+    "bt.rfe",
     "bt.sys",
     "bt.trap",
 };
@@ -252,25 +274,68 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i;
     ut8 opc = (*buf)>>2;
-    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>2 ;
+    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
     ut8 rb = (*(buf+1))&0x1F;
+    ut32 iv;
 
     switch (opc) {
         case 3:
-            {
-            ut16 iv = ((*buf)&0x3)<<8 | *(buf+1);
+            iv = ((*buf)&0x3)<<8 | *(buf+1);
+            iv = extend_signed(iv, 10);
             i = 4; //j
-            op->size = 2;
-            strcpy(op->buf_asm, inst0[i]);
-            }
+            sprintf(op->buf_asm, "%s\t(%+d)", inst0[i], iv);
             break;
         case 2:
             i = 0; //add
+            sprintf(op->buf_asm, "%s\t%s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
             break;
         case 1:
-            i = 5; //mov
+            if (ra ==0 && rb==2) {
+                i = 2; //di
+                sprintf(op->buf_asm, "%s",inst0[i]);
+            }
+            else if (ra ==0 && rb==1) {
+                i = 3; //ei
+                sprintf(op->buf_asm, "%s",inst0[i]);
+            }
+            else if (ra ==0 && rb==0) {
+                i = 8; //rfe
+                sprintf(op->buf_asm, "%s",inst0[i]);
+            }
+            else if (ra ==0 && rb==3) {
+                i = 9; //sys
+                sprintf(op->buf_asm, "%s",inst0[i]);
+            }
+            else {
+                i = 5; //mov
+                sprintf(op->buf_asm, "%s\t%s,%s",inst0[i], reg[ra], reg[rb]);
+            }
+            break;
+        case 0:
+            if (rb&0x10) {
+                if (ra==0) {
+                    i = 7; //nop
+                    sprintf(op->buf_asm, "%s",inst0[i]);
+                }
+                else {
+                    i = 1; //addi
+                    sprintf(op->buf_asm, "%s\t%s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
+                }
+            }
+            else {
+                if (ra==0) {
+                    i = 10; //trap
+                    sprintf(op->buf_asm, "%s",inst0[i]);
+                }
+                else {
+                    i = 6; //movi
+                    iv = extend_signed(rb, 4);
+                    sprintf(op->buf_asm, "%s\t%s,%+d",inst0[i], reg[ra], iv);
+                }
+            }
             break;
     }
+    op->size = 2;
 }
 
 void disas1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
@@ -373,6 +438,6 @@ int _ba_disas (RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) {
 
     ba22_inst_decode[len_code](a, op, buf, len);
 
-    printf("buf=%x len=%d\n", buf, len);
+    printf("a=%x buf=%x totallen=%d\n", a, buf, len);
     return op->size;
 }
