@@ -25,7 +25,7 @@ char *reg [][4] =
  * bg: 4B inst
  * bw: 6B inst
  */
-char *inst2 [][7] =
+char *inst2 [] =
 {
     "bn.lbz",
     "bn.ld",
@@ -38,7 +38,7 @@ char *inst2 [][7] =
     "bn.sw",
 };
 
-char *inst3 [][10] =
+char *inst3 [] =
 {
     "bn.addi",
     "bn.andi",
@@ -71,7 +71,7 @@ char *inst3 [][10] =
     "bn.swab",
 };
 
-char *inst4 [][10] =
+char *inst4 [] =
 {
     "bn.bc",
     "bn.beqi",
@@ -95,13 +95,13 @@ char *inst4 [][10] =
     "bn.rtnei",
 };
 
-char *inst5 [][8] =
+char *inst5 [] =
 {
     "bn.lwza",
     "bn.mlwz",
 };
 
-char *inst6 [][11] =
+char *inst6 [] =
 {
     "bn.aadd",
     "bn.add",
@@ -127,13 +127,13 @@ char *inst6 [][11] =
     "bn.xor",
 };
 
-char *inst7 [][8] =
+char *inst7 [] =
 {
     "bn.adds",
     "bn.subs",
 };
 
-char *inst8 [][7] =
+char *inst8 [] =
 {
     "bw.lbz",
     "bw.ld",
@@ -146,7 +146,7 @@ char *inst8 [][7] =
     "bw.sw",
 };
 
-char *inst9 [][10] =
+char *inst9 [] =
 {
     "bw.addi",
     "bw.andi",
@@ -163,7 +163,7 @@ char *inst9 [][10] =
     "bw.sfnei",
 };
 
-char *insta [][9] =
+char *insta [] =
 {
     "bw.addci",
     "bw.beq",
@@ -196,7 +196,7 @@ char *insta [][9] =
     "bw.xori",
 };
 
-char *instc [][7] =
+char *instc [] =
 {
     "bg.lbz",
     "bg.ld",
@@ -209,7 +209,7 @@ char *instc [][7] =
     "bg.sw",
 };
 
-char *instd [][7] =
+char *instd [] =
 {
     "bg.addi",
     "bg.beq",
@@ -234,7 +234,7 @@ char *instd [][7] =
     "bg.jal",
 };
 
-char *inst0 [][8] =
+char *inst0 [] =
 {
     "bt.add",
     "bt.addi",
