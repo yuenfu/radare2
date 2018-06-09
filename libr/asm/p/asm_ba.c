@@ -9,7 +9,7 @@
 #include <ba_disas.h>
 
 static int disassemble(RAsm *a, RAsmOp *op, const ut8 *buf, int len) {
-	return  _ba_disas (a->pc, op, buf, len);
+	return  _ba_disas (a, op, buf, len);
 }
 
 RAsmPlugin r_asm_plugin_ba = {

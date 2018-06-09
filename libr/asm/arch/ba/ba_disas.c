@@ -283,7 +283,7 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             iv = ((*buf)&0x3)<<8 | *(buf+1);
             iv = extend_signed(iv, 10);
             i = 4; //j
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t(%+d)", inst0[i], iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%x(%+d)", inst0[i], (ut32)a->pc+iv, iv);
             break;
         case 2:
             i = 0; //add
@@ -319,7 +319,8 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                 }
                 else {
                     i = 1; //addi
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
+                    iv = extend_signed(rb, 4);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%s,%+d",inst0[i], reg[ra], reg[ra], iv);
                 }
             }
             else {
@@ -468,6 +469,6 @@ int _ba_disas (RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) {
 
     ba22_inst_decode[len_code](a, op, buf, len);
 
-    printf("a=%x buf=%x totallen=%d\n", a, buf, len);
+    //printf("a=%x buf=%x totallen=%d\n", a, buf, len);
     return op->size;
 }
