@@ -1740,6 +1740,7 @@ extern RAnalPlugin r_anal_plugin_i4004;
 extern RAnalPlugin r_anal_plugin_xtensa;
 extern RAnalPlugin r_anal_plugin_pic;
 extern RAnalPlugin r_anal_plugin_rsp;
+extern RAnalPlugin r_anal_plugin_ba;
 #ifdef __cplusplus
 }
 #endif
