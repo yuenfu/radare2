@@ -24,20 +24,7 @@ char *reg [] =
  * bg: 4B inst
  * bw: 6B inst
  */
-char *inst2 [] =
-{
-    "bn.lbz",
-    "bn.ld",
-    "bn.lhz",
-    "bn.lws",
-    "bn.lwz",
-    "bn.sb",
-    "bn.sd",
-    "bn.sh",
-    "bn.sw",
-};
-
-char *inst3 [] =
+static const char *inst3 [] =
 {
     "bn.addi",
     "bn.andi",
@@ -70,7 +57,7 @@ char *inst3 [] =
     "bn.swab",
 };
 
-char *inst4 [] =
+static const char *inst4 [] =
 {
     "bn.bc",
     "bn.beqi",
@@ -94,13 +81,13 @@ char *inst4 [] =
     "bn.rtnei",
 };
 
-char *inst5 [] =
+static const char *inst5 [] =
 {
     "bn.lwza",
     "bn.mlwz",
 };
 
-char *inst6 [] =
+static const char *inst6 [] =
 {
     "bn.aadd",
     "bn.add",
@@ -126,13 +113,13 @@ char *inst6 [] =
     "bn.xor",
 };
 
-char *inst7 [] =
+static const char *inst7 [] =
 {
     "bn.adds",
     "bn.subs",
 };
 
-char *inst8 [] =
+static const char *inst8 [] =
 {
     "bw.lbz",
     "bw.ld",
@@ -145,7 +132,7 @@ char *inst8 [] =
     "bw.sw",
 };
 
-char *inst9 [] =
+static const char *inst9 [] =
 {
     "bw.addi",
     "bw.andi",
@@ -162,7 +149,7 @@ char *inst9 [] =
     "bw.sfnei",
 };
 
-char *insta [] =
+static const char *insta [] =
 {
     "bw.addci",
     "bw.beq",
@@ -195,7 +182,7 @@ char *insta [] =
     "bw.xori",
 };
 
-char *instc [] =
+static const char *instc [] =
 {
     "bg.lbz",
     "bg.ld",
@@ -208,7 +195,7 @@ char *instc [] =
     "bg.sw",
 };
 
-char *instd [] =
+static const char *instd [] =
 {
     "bg.addi",
     "bg.beq",
@@ -237,6 +224,23 @@ char *instd [] =
  * arg0: original value
  * arg1: effective bit
  */
+static ut32 extend_unsigned(ut32 n, ut32 s)
+{
+    // 1. bit reverse
+    n =  ((n >> 1) & 0x55555555) | ((n << 1) & 0xaaaaaaaa);
+    n =  ((n >> 2) & 0x33333333) | ((n << 2) & 0xcccccccc);
+    n =  ((n >> 4) & 0x0f0f0f0f) | ((n << 4) & 0xf0f0f0f0);
+    n =  ((n >> 8) & 0x00ff00ff) | ((n << 8) & 0xff00ff00);
+    n = ((n >> 16) & 0x0000ffff) | ((n << 16) & 0xffff0000);
+    n>>=(32-s);
+
+    return n;
+}
+
+/*
+ * arg0: original value
+ * arg1: effective bit
+ */
 static ut32 extend_signed(ut32 n, ut32 s)
 {
     // 1. bit reverse
@@ -254,7 +258,7 @@ static ut32 extend_signed(ut32 n, ut32 s)
     return n;
 }
 
-char *inst0 [] =
+static const char *inst0 [] =
 {
     "bt.add",
     "bt.addi",
@@ -272,63 +276,63 @@ char *inst0 [] =
 void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i;
-    ut8 opc = (*buf)>>2;
+    ut8 opc = ((*buf)&0xF)>>2;
     ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
     ut8 rb = (*(buf+1))&0x1F;
     ut32 iv;
 
     switch (opc) {
-        case 3:
+        case 3: //j
+            i = 4;
             iv = ((*buf)&0x3)<<8 | *(buf+1);
             iv = extend_signed(iv, 10);
-            i = 4; //j
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%+d)", inst0[i], (ut32)a->pc+iv, iv);
             break;
-        case 2:
-            i = 0; //add
+        case 2: //add
+            i = 0;
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
             break;
         case 1:
-            if (ra ==0 && rb==2) {
-                i = 2; //di
+            if (ra ==0 && rb==2) { //di
+                i = 2;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==1) {
-                i = 3; //ei
+            else if (ra ==0 && rb==1) { //ei
+                i = 3;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==0) {
-                i = 8; //rfe
+            else if (ra ==0 && rb==0) { //rfe
+                i = 8;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==3) {
-                i = 9; //sys
+            else if (ra ==0 && rb==3) { //sys
+                i = 9;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else {
-                i = 5; //mov
+            else { //mov
+                i = 5;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst0[i], reg[ra], reg[rb]);
             }
             break;
         case 0:
             if (rb&0x10) {
-                if (ra==0) {
-                    i = 7; //nop
+                if (ra==0) { //nop
+                    i = 7;
                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
                 }
-                else {
-                    i = 1; //addi
+                else { //addi
+                    i = 1;
                     iv = extend_signed(rb, 4);
                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%+d",inst0[i], reg[ra], reg[ra], iv);
                 }
             }
             else {
-                if (ra==0) {
-                    i = 10; //trap
+                if (ra==0) { //trap
+                    i = 10;
                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
                 }
-                else {
-                    i = 6; //movi
+                else { //movi
+                    i = 6;
                     iv = extend_signed(rb, 4);
                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%+d",inst0[i], reg[ra], iv);
                 }
@@ -345,10 +349,89 @@ void disas_1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 0;
 }
 
+static const char *inst2 [] =
+{
+    "bn.lbz",
+    "bn.ld",
+    "bn.lhz",
+    "bn.lws",
+    "bn.lwz",
+    "bn.sb",
+    "bn.sd",
+    "bn.sh",
+    "bn.sw",
+};
+
 void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    ut8 opc = ((*buf)&0xF)>>2;
+    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
+    ut8 rb = (*(buf+1))&0x1F;
+    ut32 iv = *(buf+2);
+
+    switch (opc) {
+        case 0: //sb
+            i = 5;
+            iv = extend_unsigned(iv, 8);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+            break;
+        case 1: //lbz
+            i = 0;
+            iv = extend_unsigned(iv, 8);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+            break;
+        case 2:
+            if (iv&0x80) { //lhz
+                i = 2;
+                iv = extend_unsigned(iv, 7);
+                iv <<= 1;
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+            }
+            else { //sh
+                i = 7;
+                iv = extend_unsigned(iv, 7);
+                iv <<= 1;
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+            }
+            break;
+        case 3:
+            switch (iv>>6) {
+                case 0: //sw
+                    i = 8;
+                    iv = extend_unsigned(iv, 6);
+                    iv <<= 2;
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+                    break;
+                case 1: //lwz
+                    i = 4;
+                    iv = extend_unsigned(iv, 6);
+                    iv <<= 2;
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                    break;
+                case 2: //lws
+                    i = 3;
+                    iv = extend_signed(iv, 6);
+                    iv <<= 2;
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                    break;
+                case 3:
+                    if (iv&0x20) { //ld
+                        i = 1;
+                        iv = extend_unsigned(iv, 5);
+                        iv <<= 3;
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                    }
+                    else { //sd
+                        i = 6;
+                        iv = extend_unsigned(iv, 5);
+                        iv <<= 3;
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+                    }
+                    break;
+            }
+            break;
+    }
     op->size = 3;
 }
 
