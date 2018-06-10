@@ -72,6 +72,23 @@ static int set_reg_profile(RAnal *anal) {
  * arg0: original value
  * arg1: effective bit
  */
+static ut32 extend_unsigned(ut32 n, ut32 s)
+{
+    // 1. bit reverse
+    n =  ((n >> 1) & 0x55555555) | ((n << 1) & 0xaaaaaaaa);
+    n =  ((n >> 2) & 0x33333333) | ((n << 2) & 0xcccccccc);
+    n =  ((n >> 4) & 0x0f0f0f0f) | ((n << 4) & 0xf0f0f0f0);
+    n =  ((n >> 8) & 0x00ff00ff) | ((n << 8) & 0xff00ff00);
+    n = ((n >> 16) & 0x0000ffff) | ((n << 16) & 0xffff0000);
+    n>>=(32-s);
+
+    return n;
+}
+
+/*
+ * arg0: original value
+ * arg1: effective bit
+ */
 static ut32 extend_signed(ut32 n, ut32 s)
 {
     // 1. bit reverse
@@ -91,7 +108,7 @@ static ut32 extend_signed(ut32 n, ut32 s)
 
 void anal_0(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
-    ut8 opc = (*buf)>>2;
+    ut8 opc = ((*buf)&0xF)>>2;
     ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
     ut8 rb = (*(buf+1))&0x1F;
     ut32 iv;
@@ -143,10 +160,6 @@ void anal_0(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
                 }
             }
             break;
-        default:
-            puts("exception in anal_0\n");
-            while(1);
-            break;
     }
 }
 
@@ -157,7 +170,65 @@ void anal_1(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 
 void anal_2(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
+    ut8 opc = ((*buf)&0xF)>>2;
+    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
+    ut8 rb = (*(buf+1))&0x1F;
+    ut32 iv = *(buf+2);
+
     op->size = 3;
+    switch (opc) {
+        case 0: //sb
+            op->type = R_ANAL_OP_TYPE_STORE;
+            iv = extend_unsigned(iv, 8);
+            break;
+        case 1: //lbz
+            op->type = R_ANAL_OP_TYPE_LOAD;
+            iv = extend_unsigned(iv, 8);
+            break;
+        case 2:
+            if (iv&0x80) { //lhz
+                op->type = R_ANAL_OP_TYPE_LOAD;
+                iv = extend_unsigned(iv, 7);
+                iv <<= 1;
+            }
+            else { //sh
+                op->type = R_ANAL_OP_TYPE_STORE;
+                iv = extend_unsigned(iv, 7);
+                iv <<= 1;
+            }
+            break;
+        case 3:
+            switch (iv>>6) {
+                case 0: //sw
+                    op->type = R_ANAL_OP_TYPE_STORE;
+                    iv = extend_unsigned(iv, 6);
+                    iv <<= 2;
+                    break;
+                case 1: //lwz
+                    op->type = R_ANAL_OP_TYPE_LOAD;
+                    iv = extend_unsigned(iv, 6);
+                    iv <<= 2;
+                    break;
+                case 2: //lws
+                    op->type = R_ANAL_OP_TYPE_LOAD;
+                    iv = extend_signed(iv, 6);
+                    iv <<= 2;
+                    break;
+                case 3:
+                    if (iv&0x20) { //ld
+                        op->type = R_ANAL_OP_TYPE_LOAD;
+                        iv = extend_unsigned(iv, 5);
+                        iv <<= 3;
+                    }
+                    else { //sd
+                        op->type = R_ANAL_OP_TYPE_STORE;
+                        iv = extend_unsigned(iv, 5);
+                        iv <<= 3;
+                    }
+                    break;
+            }
+            break;
+    }
 }
 
 void anal_3(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
