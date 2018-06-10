@@ -269,7 +269,7 @@ char *inst0 [] =
     "bt.trap",
 };
 
-void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i;
     ut8 opc = (*buf)>>2;
@@ -282,11 +282,11 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             iv = ((*buf)&0x3)<<8 | *(buf+1);
             iv = extend_signed(iv, 10);
             i = 4; //j
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%x(%+d)", inst0[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %x(%+d)", inst0[i], (ut32)a->pc+iv, iv);
             break;
         case 2:
             i = 0; //add
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
             break;
         case 1:
             if (ra ==0 && rb==2) {
@@ -307,7 +307,7 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             else {
                 i = 5; //mov
-                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%s",inst0[i], reg[ra], reg[rb]);
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst0[i], reg[ra], reg[rb]);
             }
             break;
         case 0:
@@ -319,7 +319,7 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                 else {
                     i = 1; //addi
                     iv = extend_signed(rb, 4);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%s,%+d",inst0[i], reg[ra], reg[ra], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%+d",inst0[i], reg[ra], reg[ra], iv);
                 }
             }
             else {
@@ -330,7 +330,7 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                 else {
                     i = 6; //movi
                     iv = extend_signed(rb, 4);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s\t%s,%+d",inst0[i], reg[ra], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%+d",inst0[i], reg[ra], iv);
                 }
             }
             break;
@@ -338,105 +338,105 @@ void disas0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 2;
 }
 
-void disas1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "non-support";
     strcpy(op->buf_asm, str);
     op->size = 0;
 }
 
-void disas2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 3;
 }
 
-void disas8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 6;
 }
 
-void disas9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 6;
 }
 
-void disasa(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 6;
 }
 
-void disasb(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_b(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "non-support";
     strcpy(op->buf_asm, str);
     op->size = 0;
 }
 
-void disasc(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_c(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 4;
 }
 
-void disasd(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "pending";
     strcpy(op->buf_asm, str);
     op->size = 4;
 }
 
-void disase(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_e(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "non-support";
     strcpy(op->buf_asm, str);
     op->size = 0;
 }
 
-void disasf(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
+void disas_f(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     char str[] = "non-support";
     strcpy(op->buf_asm, str);
@@ -445,22 +445,22 @@ void disasf(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 
 void (*ba22_inst_decode[16])(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) =
 {
-    disas0,
-    disas1,
-    disas2,
-    disas3,
-    disas4,
-    disas5,
-    disas6,
-    disas7,
-    disas8,
-    disas9,
-    disasa,
-    disasb,
-    disasc,
-    disasd,
-    disase,
-    disasf,
+    disas_0,
+    disas_1,
+    disas_2,
+    disas_3,
+    disas_4,
+    disas_5,
+    disas_6,
+    disas_7,
+    disas_8,
+    disas_9,
+    disas_a,
+    disas_b,
+    disas_c,
+    disas_d,
+    disas_e,
+    disas_f,
 };
 
 int _ba_disas (RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len) {
