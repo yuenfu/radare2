@@ -57,12 +57,6 @@ static const char *inst3 [] =
     "bn.swab",
 };
 
-static const char *inst5 [] =
-{
-    "bn.lwza",
-    "bn.mlwz",
-};
-
 static const char *inst6 [] =
 {
     "bn.aadd",
@@ -421,7 +415,7 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i;
     ut8 opc = ((*buf)&0xF);
-    ut8 ia = ((*(buf+1))&0xE0)>>5; //[15:13]
+    ut32 ia = ((*(buf+1))&0xE0)>>5; //[15:13]
     ut8 rb = (*(buf+1))&0x1F; //[12:8]
     ut32 iv = *(buf+2); //[7:0]
 
@@ -559,10 +553,39 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 3;
 }
 
+static const char *inst5 [] =
+{
+    "bn.mlwz",
+    "bn.msw",
+};
+
 void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    ut8 opc = ((*buf)&0xF)>>2; //[19:18]
+    ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
+    ut8 rb = ((*(buf+1))&0x1F); //[12:8]
+    ut32 ia = ((*(buf+2))&0xC0)>>6; //[7:6]
+    ut32 iv = ((*(buf+2))&0x3F); //[5:0]
+    ut8 c[] = { 2, 3, 4, 8 };
+
+    switch (opc) {
+        case 0: //mlwz
+            i = 0;
+            ia = extend_unsigned(ia, 2);
+            iv = extend_unsigned(iv, 6);
+            iv <<= 2;
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,0x%x(%s),0x%x",inst5[i], reg[ra], iv, reg[rb], c[ia]);
+            break;
+        case 1: //msw
+            i = 1;
+            ia = extend_unsigned(ia, 2);
+            iv = extend_unsigned(iv, 6);
+            iv <<= 2;
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s 0x%x(%s),%s,0x%x",inst5[i], iv, reg[rb], reg[ra], c[ia]);
+            break;
+    }
+
     op->size = 3;
 }
 
