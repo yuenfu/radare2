@@ -120,6 +120,7 @@ void anal_0(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
             iv = extend_signed(iv, 10);
             op->type = R_ANAL_OP_TYPE_JMP;
             op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 2: //bt.add
             op->type = R_ANAL_OP_TYPE_ADD;
@@ -153,7 +154,6 @@ void anal_0(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
             else {
                 if (ra==0) { //trap
                     op->type = R_ANAL_OP_TYPE_TRAP;
-                    op->eob = true; //? not sure
                 }
                 else { //movi
                     op->type = R_ANAL_OP_TYPE_MOV;
@@ -238,6 +238,123 @@ void anal_3(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 
 void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
+    ut8 opc = ((*buf)&0xF);
+    ut8 ia = ((*(buf+1))&0xE0)>>5;
+    ut8 rb = (*(buf+1))&0x1F;
+    ut32 iv = *(buf+2);
+
+    op->size = 3;
+    switch (opc) {
+        case 0: //beqi
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 1: //bnei
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 2: //bgesi
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 3: //bgtsi
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 4: //blesi
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 5: //bltsi
+            ia = extend_unsigned(ia, 3);
+            iv = extend_signed(iv, 8);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 6: //j
+            iv |= (*(buf+1)<<8);
+            iv = extend_signed(iv, 16);
+            op->type = R_ANAL_OP_TYPE_CJMP;
+            break;
+        case 7:
+            switch (*(buf+1)>>4) {
+                case 2: //bf
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 3: //bnf
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 4: //bo
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 5: //bno
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 6: //bc
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 7: //bnc
+                    iv |= ((*(buf+1)&0xF)<<8);
+                    iv = extend_signed(iv, 12);
+                    op->type = R_ANAL_OP_TYPE_CJMP;
+                    break;
+                case 10: //entri
+                    ia = rb & 0xF;
+                    ia = extend_unsigned(ia, 4);
+                    iv = extend_unsigned(iv, 8);
+                    op->type = R_ANAL_OP_TYPE_PUSH;
+                    break;
+                case 11: //reti
+                    ia = rb & 0xF;
+                    ia = extend_unsigned(ia, 4);
+                    iv = extend_unsigned(iv, 8);
+                    op->type = R_ANAL_OP_TYPE_RET | R_ANAL_OP_TYPE_POP;
+                    break;
+                case 12: //rtnei
+                    ia = rb & 0xF;
+                    ia = extend_unsigned(ia, 4);
+                    iv = extend_unsigned(iv, 8);
+                    op->type = R_ANAL_OP_TYPE_POP;
+                    break;
+                case 13:
+                    switch (*(buf+1)&0x3) {
+                        case 0: //return
+                            op->type = R_ANAL_OP_TYPE_RET;
+                            break;
+                        case 1: //jalr
+                            op->type = R_ANAL_OP_TYPE_RCALL;
+                            break;
+                        case 2: //jr
+                            op->type = R_ANAL_OP_TYPE_RJMP;
+                            break;
+                    }
+                    break;
+            }
+            break;
+    }
+    if ((opc&0xc) == 0x8) { //jal
+        iv |= ((*(buf+1))<<8);
+        iv |= ((*(buf+0)&0x3)<<16);
+        iv = extend_signed(iv, 18);
+        op->type = R_ANAL_OP_TYPE_RCALL;
+        op->jump = addr + (st32)iv;
+        op->fail = addr + op->size;
+    }
+
     op->size = 3;
 }
 
