@@ -7,65 +7,54 @@
 #include <r_anal.h>
 
 static int set_reg_profile(RAnal *anal) {
-#if 0
+#if 1
 	const char *p =
-		"=PC	pc\n"
-		"=SP	sp\n"
-		"gpr	r0	.8	0	0\n"
-		"gpr	r1	.8	1	0\n"
-		"gpr	r2	.8	2	0\n"
-		"gpr	r3	.8	3	0\n"
-		"gpr	r4	.8	4	0\n"
-		"gpr	r5	.8	5	0\n"
-		"gpr	r6	.8	6	0\n"
-		"gpr	r7	.8	7	0\n"
-		"gpr	a	.8	8	0\n"
-		"gpr	b	.8	9	0\n"
-		"gpr	dptr	.16	10	0\n"
-		"gpr	dpl	.8	10	0\n"
-		"gpr	dph	.8	11	0\n"
-		"gpr	psw	.8	12	0\n"
-		"gpr	p	.1	.96	0\n"
-		"gpr	ov	.1	.98	0\n"
-		"gpr	ac	.1	.102	0\n"
-		"gpr	c	.1	.103	0\n"
-		"gpr	sp	.8	13	0\n"
-		"gpr	pc	.16	15	0\n"
-// ---------------------------------------------------
-// ba memory emulation control registers
-// These registers map ba memory classes to r2's
-// linear address space. Registers contain base addr
-// in r2 memory space representing the memory class.
-// Offsets are initialized based on asm.cpu, but can
-// be updated with ar command.
-//
-// _code
-//		program memory (CODE)
-// _idata
-//		internal data memory (IDATA, IRAM)
-// _sfr
-//		special function registers (SFR)
-// _xdata
-//		external data memory (XDATA, XRAM)
-// _pdata
-//		page accessed by movx @ri op (PDATA, XREG)
-//		r2 addr = (_pdata & 0xff) << 8 + x_data
-//		if 0xffffffnn, addr = ([SFRnn] << 8) + _xdata (TODO)
-		"gpr	_code	.32	20 0\n"
-		"gpr	_idata	.32 24 0\n"
-		"gpr	_sfr	.32	28 0\n"
-		"gpr	_xdata	.32 32 0\n"
-		"gpr	_pdata	.32	36 0\n";
+//		"=PC	pc\n"
+		"=SP	r1\n"
+		"gpr	r0	.32	0	0\n"
+		"gpr	r1	.32	4	0\n"
+		"gpr	r2	.32	8	0\n"
+		"gpr	r3	.32	12	0\n"
+		"gpr	r4	.32	16	0\n"
+		"gpr	r5	.32	20	0\n"
+		"gpr	r6	.32	24	0\n"
+		"gpr	r7	.32	28	0\n"
+		"gpr	r8	.32	32	0\n"
+		"gpr	r9	.32	36	0\n"
+		"gpr	r10	.32	40	0\n"
+		"gpr	r11	.32	44	0\n"
+		"gpr	r12	.32	48	0\n"
+		"gpr	r13	.32	52	0\n"
+		"gpr	r14	.32	56	0\n"
+		"gpr	r15	.32	60	0\n"
+		"gpr	r16	.32	64	0\n"
+		"gpr	r17	.32	68	0\n"
+		"gpr	r18	.32	72	0\n"
+		"gpr	r19	.32	76	0\n"
+		"gpr	r20	.32	80	0\n"
+		"gpr	r21	.32	84	0\n"
+		"gpr	r22	.32	88	0\n"
+		"gpr	r23	.32	92	0\n"
+		"gpr	r24	.32	96	0\n"
+		"gpr	r25	.32	100	0\n"
+		"gpr	r26	.32	104	0\n"
+		"gpr	r27	.32	108	0\n"
+		"gpr	r28	.32	112	0\n"
+		"gpr	r29	.32	116	0\n"
+		"gpr	r30	.32	120	0\n"
+		"gpr	r31	.32	124	0\n"
+		;
 
 	int retval = r_reg_set_profile_string (anal->reg, p);
-	if (retval) {
-		// reset emulation control registers based on cpu
-		set_cpu_model (anal, true);
-	}
+	//if (retval) {
+	//	// reset emulation control registers based on cpu
+	//	set_cpu_model (anal, true);
+	//}
 
 	return retval;
-#endif
+#else
 	return 0;
+#endif
 }
 
 /*
