@@ -10,6 +10,7 @@ static int set_reg_profile(RAnal *anal) {
 #if 1
 	const char *p =
 //		"=PC	pc\n"
+		"=LR	r9\n"
 		"=SP	r1\n"
 		"gpr	r0	.32	0	0\n"
 		"gpr	r1	.32	4	0\n"
@@ -109,7 +110,6 @@ void anal_0(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
             iv = extend_signed(iv, 10);
             op->type = R_ANAL_OP_TYPE_JMP;
             op->jump = addr + (st32)iv;
-            op->fail = addr + op->size;
             break;
         case 2: //bt.add
             op->type = R_ANAL_OP_TYPE_ADD;
@@ -235,42 +235,36 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
     op->size = 3;
     switch (opc) {
         case 0: //beqi
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
             op->fail = addr + op->size;
             break;
         case 1: //bnei
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
             op->fail = addr + op->size;
             break;
         case 2: //bgesi
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
             op->fail = addr + op->size;
             break;
         case 3: //bgtsi
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
             op->fail = addr + op->size;
             break;
         case 4: //blesi
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
             op->fail = addr + op->size;
             break;
         case 5: //bltsi
-            ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
             op->jump = addr + (st32)iv;
