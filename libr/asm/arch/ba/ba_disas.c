@@ -83,12 +83,6 @@ static const char *inst6 [] =
     "bn.xor",
 };
 
-static const char *inst7 [] =
-{
-    "bn.adds",
-    "bn.subs",
-};
-
 static const char *inst8 [] =
 {
     "bw.lbz",
@@ -596,11 +590,34 @@ void disas_6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 3;
 }
 
+static const char *inst7 [] =
+{
+    "bn.adds",
+    "bn.subs",
+};
+
 void disas_7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    ut8 opc = ((*buf)&0xF)>>2; //[19:18]
+    ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
+    ut8 rb = ((*(buf+1))&0x1F); //[12:8]
+    ut8 rc = ((*(buf+2))&0xF1)>>3; //[7:3]
+    ut32 iv = ((*(buf+2))&0x07); //[2:0]
+
     op->size = 3;
+    switch (opc) {
+        case 1:
+            if (iv == 0) { //bn.adds
+                i = 0;
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%s",inst7[i], reg[ra], reg[rb], reg[rc]);
+            }
+            else if (iv == 1) { //bn.subs
+                i = 1;
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%s",inst7[i], reg[ra], reg[rb], reg[rc]);
+            }
+            break;
+    }
 }
 
 void disas_8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
