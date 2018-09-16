@@ -842,8 +842,6 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     break;
             }
             break;
-        case 3:
-            break;
     }
 }
 
