@@ -630,14 +630,14 @@ static int ba_op(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len) {
 RAnalPlugin r_anal_plugin_ba = {
 	.name = "ba",
 	.arch = "ba",
-//	.esil = true,
+	.esil = false,//true,
 	.bits = 32,
 	.desc = "ba CPU code analysis plugin",
 	.license = "PD",
 	.op = &ba_op,
 	.set_reg_profile = &set_reg_profile,
-//	.esil_init = esil_ba_init,
-//	.esil_fini = esil_ba_fini
+	.esil_init = NULL,//esil_ba_init,
+	.esil_fini = NULL//esil_ba_fini
 };
 
 #ifndef CORELIB
