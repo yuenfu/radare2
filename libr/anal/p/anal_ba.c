@@ -238,36 +238,49 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 1: //bnei
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 2: //bgesi
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 3: //bgtsi
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 4: //blesi
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 5: //bltsi
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             op->type = R_ANAL_OP_TYPE_CJMP;
+            op->jump = addr + (st32)iv;
+            op->fail = addr + op->size;
             break;
         case 6: //j
             iv |= (*(buf+1)<<8);
             iv = extend_signed(iv, 16);
-            op->type = R_ANAL_OP_TYPE_CJMP;
+            op->type = R_ANAL_OP_TYPE_JMP;
+            op->jump = addr + (st32)iv;
             break;
         case 7:
             switch (*(buf+1)>>4) {
@@ -275,31 +288,43 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 3: //bnf
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 4: //bo
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 5: //bno
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 6: //bc
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 7: //bnc
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
                     op->type = R_ANAL_OP_TYPE_CJMP;
+                    op->jump = addr + (st32)iv;
+                    op->fail = addr + op->size;
                     break;
                 case 10: //entri
                     ia = rb & 0xF;
@@ -328,7 +353,11 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
                             op->type = R_ANAL_OP_TYPE_RCALL;
                             break;
                         case 2: //jr
-                            op->type = R_ANAL_OP_TYPE_RJMP;
+                            iv >>= 3;
+                            if (iv == 9)
+                                op->type = R_ANAL_OP_TYPE_RET;
+                            else
+                                op->type = R_ANAL_OP_TYPE_RJMP;
                             break;
                     }
                     break;
@@ -339,12 +368,9 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
         iv |= ((*(buf+1))<<8);
         iv |= ((*(buf+0)&0x3)<<16);
         iv = extend_signed(iv, 18);
-        op->type = R_ANAL_OP_TYPE_RCALL;
+        op->type = R_ANAL_OP_TYPE_CALL;
         op->jump = addr + (st32)iv;
-        op->fail = addr + op->size;
     }
-
-    op->size = 3;
 }
 
 void anal_5(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
