@@ -24,39 +24,6 @@ char *reg [] =
  * bg: 4B inst
  * bw: 6B inst
  */
-static const char *inst3 [] =
-{
-    "bn.addi",
-    "bn.andi",
-    "bn.bitrev",
-    "bn.clz",
-    "bn.extbs",
-    "bn.extbz",
-    "bn.exths",
-    "bn.exthz",
-    "bn.ff1",
-    "bn.mfspr",
-    "bn.mtspr",
-    "bn.ori",
-    "bn.sfeq",
-    "bn.sfeqi",
-    "bn.sfges",
-    "bn.sfgesi",
-    "bn.sfgeu",
-    "bn.sfgeui",
-    "bn.sfgts",
-    "bn.sfgtsi",
-    "bn.sfgtu",
-    "bn.sfgtui",
-    "bn.sflesi",
-    "bn.sfleui",
-    "bn.sfltsi",
-    "bn.sfltui",
-    "bn.sfne",
-    "bn.sfnei",
-    "bn.swab",
-};
-
 static const char *inst6 [] =
 {
     "bn.aadd",
@@ -341,11 +308,189 @@ void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 3;
 }
 
+static const char *inst3 [] =
+{
+    "bn.addi",
+    "bn.andi",
+    "bn.bitrev",
+    "bn.clz",
+    "bn.extbs",
+    "bn.extbz",
+    "bn.exths",
+    "bn.exthz",
+    "bn.ff1",
+    "bn.mfspr",
+    "bn.mtspr",
+    "bn.ori",
+    "bn.sfeq",
+    "bn.sfeqi",
+    "bn.sfges",
+    "bn.sfgesi",
+    "bn.sfgeu",
+    "bn.sfgeui",
+    "bn.sfgts",
+    "bn.sfgtsi",
+    "bn.sfgtu",
+    "bn.sfgtui",
+    "bn.sflesi",
+    "bn.sfleui",
+    "bn.sfltsi",
+    "bn.sfltui",
+    "bn.sfne",
+    "bn.sfnei",
+    "bn.swab",
+};
+
 void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    //bn.sfxx format
+    ut8 ra = ((*(buf+1))&0x1F); //[12:8]
+    ut8 rb = ((*(buf+2))&0xF8)>>3; //[7:3]
+    ut32 iv = (*(buf+2)); //[7:0]
+
     op->size = 3;
+    switch (((*buf)&0xC)>>2) { //[19:18]
+        case 0: //addi
+            i = 0;
+            ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
+            rb = ((*(buf+1))&0x1F); //[12:8]
+            iv = extend_signed(iv, 8);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            break;
+        case 1: //andi
+            i = 1;
+            ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
+            rb = ((*(buf+1))&0x1F); //[12:8]
+            iv = extend_unsigned(iv, 8);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            break;
+        case 2: //ori
+            i = 11;
+            ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
+            rb = ((*(buf+1))&0x1F); //[12:8]
+            iv = extend_unsigned(iv, 8);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            break;
+        case 3:
+            switch ((*buf)&0x3) { //[17:16]
+                case 0:
+                    switch (((*buf+1)&0xE0)>>5) { //[15:13]
+                        case 0: //sfeqi
+                            i = 13;
+                            break;
+                        case 1: //sfnei
+                            i = 27;
+                            break;
+                        case 2: //sfgesi
+                            i = 15;
+                            break;
+                        case 3: //sfgeui
+                            i = 17;
+                            break;
+                        case 4: //sfgtsi
+                            i = 19;
+                            break;
+                        case 5: //sfgtui
+                            i = 21;
+                            break;
+                        case 6: //sflesi
+                            i = 22;
+                            break;
+                        case 7: //sfleui
+                            i = 23;
+                            iv = extend_signed(iv, 8);
+                            break;
+                    }
+                    iv = extend_signed(iv, 8);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%+d",inst3[i], reg[ra], iv);
+                    break;
+                case 1:
+                    switch (((*buf+1)&0xE0)>>5) { //[15:13]
+                        case 0: //sfltsi
+                            i = 24;
+                            iv = extend_signed(iv, 8);
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%+d",inst3[i], reg[ra], iv);
+                            break;
+                        case 1: //sfltui
+                            iv = extend_signed(iv, 8);
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%+d",inst3[i], reg[ra], iv);
+                            i = 25;
+                            break;
+                        case 2: //sfeq
+                            i = 12;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                        case 3: //sfne
+                            i = 26;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                        case 4: //sfges
+                            i = 14;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                        case 5: //sfgeu
+                            i = 16;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                        case 6: //sfgts
+                            i = 18;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                        case 7: //sfgtu
+                            i = 20;
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                            break;
+                    }
+                    break;
+                case 2:
+                    switch (((*buf+1)&0x60)>>5) { //[14:13]
+                        case 0:
+                            switch ((*buf+2)&0x7) { //[2:0]
+                                case 0: //extbz
+                                    i = 5;
+                                    break;
+                                case 1: //extbs
+                                    i = 4;
+                                    break;
+                                case 2: //exthz
+                                    i = 7;
+                                    break;
+                                case 3: //exths
+                                    i = 6;
+                                    break;
+                                case 4: //ff1
+                                    i = 8;
+                                    break;
+                                case 5: //clz
+                                    i = 3;
+                                    break;
+                                case 6: //bitrev
+                                    i = 2;
+                                    break;
+                                case 7: //swab
+                                    i = 28;
+                                    break;
+                            }
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[rb], reg[ra]);
+                            break;
+                        case 1:
+                            switch ((*buf+2)&0x7) { //[2:0]
+                                case 0: //mfspr
+                                    i = 9;
+                                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[rb], reg[ra]);
+                                    break;
+                                case 1: //mtspr
+                                    i = 10;
+                                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s %s,%s",inst3[i], reg[ra], reg[rb]);
+                                    break;
+                            }
+                            break;
+                    }
+                    break;
+            }
+            break;
+    }
 }
 
 static const char *inst4 [] =
