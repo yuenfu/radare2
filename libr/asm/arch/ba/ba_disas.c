@@ -412,9 +412,9 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
                             break;
                         case 1: //sfltui
+                            i = 25;
                             iv = extend_signed(iv, 8);
                             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
-                            i = 25;
                             break;
                         case 2: //sfeq
                             i = 12;
@@ -532,7 +532,7 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
             break;
         case 1: //bnei
-            i = 0;
+            i = 8;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
