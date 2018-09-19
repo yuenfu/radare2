@@ -160,8 +160,8 @@ void anal_1(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 void anal_2(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
     ut8 opc = ((*buf)&0xF)>>2;
-    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
-    ut8 rb = (*(buf+1))&0x1F;
+    //ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
+    //ut8 rb = (*(buf+1))&0x1F;
     ut32 iv = *(buf+2);
 
     op->size = 3;
@@ -395,8 +395,8 @@ void anal_9(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 void anal_a(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
     ut8 opc = ((*buf)&0xC)>>2; //[43:42]
-    ut8 ia = ((*(buf+1))&0x3E)>>1; //[37:33]
-    ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[32:28]
+    //ut8 ia = ((*(buf+1))&0x3E)>>1; //[37:33]
+    //ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[32:28]
     ut32 iv = ((*(buf+2))&0xF)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[27:0]
 
     op->size = 6;
@@ -504,28 +504,28 @@ void anal_a(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
         case 2:
             switch ((*(buf+5))&0x7) { //[2:0]
                 case 0: //mfspr
-                    ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
-                    rb = (*(buf+1))&0x1F; //[36:32]
-                    iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
-                    iv = extend_unsigned(iv, 24);
+                    //ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
+                    //rb = (*(buf+1))&0x1F; //[36:32]
+                    //iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
+                    //iv = extend_unsigned(iv, 24);
                     break;
                 case 1: //mtspr
-                    ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
-                    rb = (*(buf+1))&0x1F; //[36:32]
-                    iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
-                    iv = extend_unsigned(iv, 24);
+                    //ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
+                    //rb = (*(buf+1))&0x1F; //[36:32]
+                    //iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
+                    //iv = extend_unsigned(iv, 24);
                     break;
                 case 2: //addci
-                    ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
-                    rb = (*(buf+1))&0x1F; //[36:32]
-                    iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
-                    iv = extend_signed(iv, 24);
+                    //ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
+                    //rb = (*(buf+1))&0x1F; //[36:32]
+                    //iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
+                    //iv = extend_signed(iv, 24);
                     break;
                 case 6: //xori
-                    ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
-                    rb = (*(buf+1))&0x1F; //[36:32]
-                    iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
-                    iv = extend_signed(iv, 24);
+                    //ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[41:37]
+                    //rb = (*(buf+1))&0x1F; //[36:32]
+                    //iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
+                    //iv = extend_signed(iv, 24);
                     break;
             }
             break;
@@ -546,7 +546,7 @@ void anal_d(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
     ut8 opc = ((*buf)&0xF); //[27:24]
     ut8 ia = ((*(buf+1))&0x3E)>>1; //[21:17]
-    ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[16:12]
+    //ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[16:12]
     ut32 iv = ((*(buf+2))&0xF)<<8 | *(buf+3); //[11:0]
 
     op->size = 4;
@@ -708,7 +708,7 @@ void anal_d(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
     }
     if ((opc&0xc) == 0x8) { //addi
         ia = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[25:21]
-        rb = (*(buf+1))&0x1F; //[20:16]
+        //rb = (*(buf+1))&0x1F; //[20:16]
         iv = *(buf+2)<<8 | *(buf+3);
         iv = extend_signed(iv, 16);
         op->type = R_ANAL_OP_TYPE_ADD;
