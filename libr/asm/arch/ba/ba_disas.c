@@ -149,9 +149,9 @@ static const char *inst0 [] =
 void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i;
-    ut8 opc = ((*buf)&0xF)>>2;
-    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
-    ut8 rb = (*(buf+1))&0x1F;
+    ut8 opc = ((*buf)&0xC)>>2; //[11:10]
+    ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[9:5]
+    ut8 rb = (*(buf+1))&0x1F; //[4:0]
     ut32 iv;
 
     switch (opc) {
@@ -399,7 +399,6 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                             break;
                         case 7: //sfleui
                             i = 23;
-                            iv = extend_signed(iv, 8);
                             break;
                     }
                     iv = extend_signed(iv, 8);
