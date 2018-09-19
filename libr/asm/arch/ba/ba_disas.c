@@ -159,26 +159,26 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             i = 4;
             iv = ((*buf)&0x3)<<8 | *(buf+1);
             iv = extend_signed(iv, 10);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)", inst0[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x", inst0[i], (ut32)a->pc+iv);
             break;
         case 2: //add
             i = 0;
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%s",inst0[i], reg[ra], reg[ra], reg[rb]);
             break;
         case 1:
-            if (ra ==0 && rb==2) { //di
+            if (ra==0 && rb==2) { //di
                 i = 2;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==1) { //ei
+            else if (ra==0 && rb==1) { //ei
                 i = 3;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==0) { //rfe
+            else if (ra==0 && rb==0) { //rfe
                 i = 8;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
-            else if (ra ==0 && rb==3) { //sys
+            else if (ra==0 && rb==3) { //sys
                 i = 9;
                 snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
             }
@@ -196,7 +196,7 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                 else { //addi
                     i = 1;
                     iv = extend_signed(rb, 4);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",inst0[i], reg[ra], reg[ra], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst0[i], reg[ra], reg[ra], iv);
                 }
             }
             else {
@@ -207,7 +207,7 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                 else { //movi
                     i = 6;
                     iv = extend_signed(rb, 4);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst0[i], reg[ra], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst0[i], reg[ra], iv);
                 }
             }
             break;
@@ -247,25 +247,25 @@ void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         case 0: //sb
             i = 5;
             iv = extend_unsigned(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
             break;
         case 1: //lbz
             i = 0;
             iv = extend_unsigned(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
             break;
         case 2:
             if (iv&0x80) { //lhz
                 i = 2;
                 iv = extend_unsigned(iv, 7);
                 iv <<= 1;
-                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
             }
             else { //sh
                 i = 7;
                 iv = extend_unsigned(iv, 7);
                 iv <<= 1;
-                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+                snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
             }
             break;
         case 3:
@@ -274,13 +274,13 @@ void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     i = 8;
                     iv = extend_unsigned(iv, 6);
                     iv <<= 2;
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
                     break;
                 case 1: //lwz
                     i = 4;
                     iv = extend_unsigned(iv, 6);
                     iv <<= 2;
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
                     break;
                 case 2: //lws
                     i = 3;
@@ -293,13 +293,13 @@ void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                         i = 1;
                         iv = extend_unsigned(iv, 5);
                         iv <<= 3;
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s)",inst2[i], reg[ra], iv, reg[rb]);
                     }
                     else { //sd
                         i = 6;
                         iv = extend_unsigned(iv, 5);
                         iv <<= 3;
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s",inst2[i], iv, reg[rb], reg[ra]);
                     }
                     break;
             }
@@ -319,8 +319,8 @@ static const char *inst3 [] =
     "b.exths",
     "b.exthz",
     "b.ff1",
-    "b.mfspr",
-    "b.mtspr",
+    "bn.mfspr",
+    "bn.mtspr",
     "b.ori",
     "b.sfeq",
     "b.sfeqi",
@@ -356,21 +356,21 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
             rb = ((*(buf+1))&0x1F); //[12:8]
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst3[i], reg[ra], reg[rb], iv);
             break;
         case 1: //andi
             i = 1;
             ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
             rb = ((*(buf+1))&0x1F); //[12:8]
             iv = extend_unsigned(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst3[i], reg[ra], reg[rb], iv);
             break;
         case 2: //ori
             i = 11;
             ra = ((*buf)&0x03)<<3 | ((*(buf+1))&0xE0)>>5; //[17:13]
             rb = ((*(buf+1))&0x1F); //[12:8]
             iv = extend_unsigned(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",inst3[i], reg[ra], reg[rb], iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst3[i], reg[ra], reg[rb], iv);
             break;
         case 3:
             switch ((*buf)&0x3) { //[17:16]
@@ -402,19 +402,19 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                             break;
                     }
                     iv = extend_signed(iv, 8);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst3[i], reg[ra], iv);
                     break;
                 case 1:
                     switch ((*(buf+1)&0xE0)>>5) { //[15:13]
                         case 0: //sfltsi
                             i = 24;
                             iv = extend_signed(iv, 8);
-                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst3[i], reg[ra], iv);
                             break;
                         case 1: //sfltui
                             i = 25;
                             iv = extend_signed(iv, 8);
-                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
+                            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst3[i], reg[ra], iv);
                             break;
                         case 2: //sfeq
                             i = 12;
@@ -529,43 +529,43 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             i = 1;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 1: //bnei
             i = 8;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 2: //bgesi
             i = 3;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 3: //bgtsi
             i = 4;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 4: //blesi
             i = 5;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 5: //bltsi
             i = 6;
             ia = extend_unsigned(ia, 3);
             iv = extend_signed(iv, 8);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",inst4[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",inst4[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 6: //j
             i = 13;
             iv |= (*(buf+1)<<8);
             iv = extend_signed(iv, 16);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
             break;
         case 7:
             switch (*(buf+1)>>4) {
@@ -573,58 +573,58 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     i = 2;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 3: //bnf
                     i = 9;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 4: //bo
                     i = 11;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 5: //bno
                     i = 10;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 6: //bc
                     i = 0;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 7: //bnc
                     i = 7;
                     iv |= ((*(buf+1)&0xF)<<8);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
                     break;
                 case 10: //entri
                     i = 12;
                     ia = rb & 0xF;
                     ia = extend_unsigned(ia, 4);
                     iv = extend_unsigned(iv, 8);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x,%x",inst4[i], ia, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x,0x%x",inst4[i], ia, iv);
                     break;
                 case 11: //reti
                     i = 17;
                     ia = rb & 0xF;
                     ia = extend_unsigned(ia, 4);
                     iv = extend_unsigned(iv, 8);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x,%x",inst4[i], ia, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x,0x%x",inst4[i], ia, iv);
                     break;
                 case 12: //rtnei
                     i = 19;
                     ia = rb & 0xF;
                     ia = extend_unsigned(ia, 4);
                     iv = extend_unsigned(iv, 8);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x,%x",inst4[i], ia, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x,0x%x",inst4[i], ia, iv);
                     break;
                 case 13:
                     switch (*(buf+1)&0x3) {
@@ -652,7 +652,7 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         iv |= ((*(buf+1))<<8);
         iv |= ((*(buf+0)&0x3)<<16);
         iv = extend_signed(iv, 18);
-        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",inst4[i], (ut32)a->pc+iv, iv);
+        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
     }
 
     op->size = 3;
@@ -672,7 +672,7 @@ void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     ut8 rb = ((*(buf+1))&0x1F); //[12:8]
     ut32 ia = ((*(buf+2))&0xC0)>>6; //[7:6]
     ut32 iv = ((*(buf+2))&0x3F); //[5:0]
-    ut8 c[] = { 2, 3, 4, 8 };
+    //ut8 c[] = { 2, 3, 4, 8 };
 
     switch (opc) {
         case 0: //mlwz
@@ -680,14 +680,14 @@ void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             ia = extend_unsigned(ia, 2);
             iv = extend_unsigned(iv, 6);
             iv <<= 2;
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s),0x%x",inst5[i], reg[ra], iv, reg[rb], c[ia]);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x(%s),0x%x",inst5[i], reg[ra], iv, reg[rb], ia);//c[ia]);
             break;
         case 1: //msw
             i = 1;
             ia = extend_unsigned(ia, 2);
             iv = extend_unsigned(iv, 6);
             iv <<= 2;
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s,0x%x",inst5[i], iv, reg[rb], reg[ra], c[ia]);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s,0x%x",inst5[i], iv, reg[rb], reg[ra], ia);//c[ia]);
             break;
     }
 
@@ -841,7 +841,7 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             ia = extend_signed(ia, 5);
             iv = extend_signed(iv, 28);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",insta[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",insta[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 1:
             switch (((*buf)&0x3)<<2 | ((*(buf+1))&0xC0)>>6) { //[41:38]
@@ -849,44 +849,44 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     i = 21;
                     iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                     iv = extend_signed(iv, 32);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",insta[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",insta[i], (ut32)a->pc+iv);
                     break;
                 case 1: //j
                     i = 19;
                     iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                     iv = extend_signed(iv, 32);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",insta[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",insta[i], (ut32)a->pc+iv);
                     break;
                 case 2: //bf
                     i = 3;
                     iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                     iv = extend_signed(iv, 32);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",insta[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",insta[i], (ut32)a->pc+iv);
                     break;
                 case 3: //bnf
                     i = 18;
                     iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                     iv = extend_signed(iv, 32);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",insta[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",insta[i], (ut32)a->pc+iv);
                     break;
                 case 4: //ja
                     i = 20;
                     iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                     iv = extend_signed(iv, 32);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",insta[i], (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",insta[i], (ut32)a->pc+iv);
                     break;
                 case 5:
                     if (!(*(buf+1))&0x1) { //jma
                         i = 22;
                         iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                         iv = extend_signed(iv, 32);
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%+d)",insta[i], reg[ia], (ut32)a->pc+iv, iv);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",insta[i], reg[ia], (ut32)a->pc+iv);
                     }
                     else { //jmal
                         i = 23;
                         iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                         iv = extend_signed(iv, 32);
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%+d)",insta[i], reg[ia], (ut32)a->pc+iv, iv);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",insta[i], reg[ia], (ut32)a->pc+iv);
                     }
                     break;
                 case 6:
@@ -894,13 +894,13 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                         i = 24;
                         iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                         iv = extend_signed(iv, 32);
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%+d)",insta[i], reg[ia], (ut32)a->pc+iv, iv);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",insta[i], reg[ia], (ut32)a->pc+iv);
                     }
                     else { //sma
                         i = 27;
                         iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5);
                         iv = extend_signed(iv, 32);
-                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x(%+d)",insta[i], reg[ia], (ut32)a->pc+iv, iv);
+                        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",insta[i], reg[ia], (ut32)a->pc+iv);
                     }
                     break;
             }
@@ -929,7 +929,7 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     rb = (*(buf+1))&0x1F; //[36:32]
                     iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
                     iv = extend_signed(iv, 24);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",insta[i], reg[ia], reg[rb], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",insta[i], reg[ia], reg[rb], iv);
                     break;
                 case 6: //xori
                     i = 28;
@@ -937,7 +937,7 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     rb = (*(buf+1))&0x1F; //[36:32]
                     iv = *(buf+2)<<16 | *(buf+3)<<8 | *(buf+4); //[31:8]
                     iv = extend_signed(iv, 24);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",insta[i], reg[ia], reg[rb], iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",insta[i], reg[ia], reg[rb], iv);
                     break;
             }
             break;
@@ -996,57 +996,39 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             switch (((*(buf+1))&0xC0)>>6) {
                 case 0: //beqi
                     i = 2;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 1: //bnei
                     i = 17;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 2: //bgesi
                     i = 5;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 3: //bgtsi
                     i = 9;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
             }
+            ia = extend_signed(ia, 5);
+            iv = extend_signed(iv, 12);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",instd[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 1:
             switch (((*(buf+1))&0xC0)>>6) {
                 case 0: //blesi
                     i = 12;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 1: //bltsi
                     i = 14;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 2: //bgeui
                     i = 7;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 3: //bgtui
                     i = 11;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
             }
+            ia = extend_signed(ia, 5);
+            iv = extend_signed(iv, 12);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",instd[i], reg[rb], ia, (ut32)a->pc+iv);
             break;
         case 2:
             switch (((*(buf+1))&0xC0)>>6) {
@@ -1054,25 +1036,23 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     i = 13;
                     ia = extend_signed(ia, 5);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",instd[i], reg[rb], ia, (ut32)a->pc+iv);
                     break;
                 case 1: //bltui
                     i = 15;
                     ia = extend_signed(ia, 5);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",instd[i], reg[rb], ia, (ut32)a->pc+iv);
                     break;
                 case 2: //beq
                     i = 1;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+                    iv = extend_unsigned(iv, 12);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",instd[i], reg[ia], reg[rb], (ut32)a->pc+iv);
                     break;
                 case 3: //bne
                     i = 16;
-                    ia = extend_signed(ia, 5);
                     iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",instd[i], reg[ia], reg[rb], (ut32)a->pc+iv);
                     break;
             }
             break;
@@ -1080,53 +1060,43 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             switch (((*(buf+1))&0xC0)>>6) {
                 case 0: //bges
                     i = 4;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 1: //bgts
                     i = 8;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 2: //bgeu
                     i = 6;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
                 case 3: //bgtu
                     i = 10;
-                    ia = extend_signed(ia, 5);
-                    iv = extend_signed(iv, 12);
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%x,%x(%+d)",instd[i], reg[rb], ia, (ut32)a->pc+iv, iv);
                     break;
             }
+            iv = extend_signed(iv, 12);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",instd[i], reg[ia], reg[rb], (ut32)a->pc+iv);
             break;
         case 4: //jal
             i = 20;
             iv = *(buf+1)<<16 | *(buf+2)<<8 | *(buf+3);
             iv = extend_signed(iv, 24);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",instd[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",instd[i], (ut32)a->pc+iv);
             break;
         case 5: //j
             i = 19;
             iv = *(buf+1)<<16 | *(buf+2)<<8 | *(buf+3);
             iv = extend_signed(iv, 24);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",instd[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",instd[i], (ut32)a->pc+iv);
             break;
         case 6: //bf
             i = 3;
             iv = *(buf+1)<<16 | *(buf+2)<<8 | *(buf+3);
             iv = extend_signed(iv, 24);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",instd[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",instd[i], (ut32)a->pc+iv);
             break;
         case 7: //bnf
             i = 18;
             iv = *(buf+1)<<16 | *(buf+2)<<8 | *(buf+3);
             iv = extend_signed(iv, 24);
-            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%x(%+d)",instd[i], (ut32)a->pc+iv, iv);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",instd[i], (ut32)a->pc+iv);
             break;
     }
     if ((opc&0xc) == 0x8) { //addi
@@ -1135,7 +1105,7 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         rb = (*(buf+1))&0x1F; //[20:16]
         iv = *(buf+2)<<8 | *(buf+3);
         iv = extend_signed(iv, 16);
-        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%+d",instd[i], reg[ia], reg[rb], iv);
+        snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",instd[i], reg[ia], reg[rb], iv);
     }
 
     op->size = 4;
