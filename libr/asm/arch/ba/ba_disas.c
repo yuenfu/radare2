@@ -375,7 +375,7 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         case 3:
             switch ((*buf)&0x3) { //[17:16]
                 case 0:
-                    switch (((*buf+1)&0xE0)>>5) { //[15:13]
+                    switch ((*(buf+1)&0xE0)>>5) { //[15:13]
                         case 0: //sfeqi
                             i = 13;
                             break;
@@ -405,7 +405,7 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%+d",inst3[i], reg[ra], iv);
                     break;
                 case 1:
-                    switch (((*buf+1)&0xE0)>>5) { //[15:13]
+                    switch ((*(buf+1)&0xE0)>>5) { //[15:13]
                         case 0: //sfltsi
                             i = 24;
                             iv = extend_signed(iv, 8);
@@ -443,9 +443,9 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                     }
                     break;
                 case 2:
-                    switch (((*buf+1)&0x60)>>5) { //[14:13]
+                    switch ((*(buf+1)&0x60)>>5) { //[14:13]
                         case 0:
-                            switch ((*buf+2)&0x7) { //[2:0]
+                            switch (*(buf+2)&0x7) { //[2:0]
                                 case 0: //extbz
                                     i = 5;
                                     break;
@@ -474,7 +474,7 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
                             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s",inst3[i], reg[rb], reg[ra]);
                             break;
                         case 1:
-                            switch ((*buf+2)&0x7) { //[2:0]
+                            switch (*(buf+2)&0x7) { //[2:0]
                                 case 0: //mfspr
                                     i = 9;
                                     snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s",inst3[i], reg[rb], reg[ra]);
