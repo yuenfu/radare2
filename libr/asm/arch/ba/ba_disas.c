@@ -80,12 +80,13 @@ static const char *inst0 [] =
 
 void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[11:10]
     ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5; //[9:5]
     ut8 rb = (*(buf+1))&0x1F; //[4:0]
     ut32 iv;
 
+    op->size = 2;
     switch (opc) {
         case 3: //j
             i = 4;
@@ -146,7 +147,8 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
-    op->size = 2;
+    if (i<0)
+        op->size = 0;
 }
 
 void disas_1(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
@@ -171,12 +173,13 @@ static const char *inst2 [] =
 
 void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xF)>>2;
     ut8 ra = ((*buf)&0x3)<<3 | ((*(buf+1))&0xE0)>>5;
     ut8 rb = (*(buf+1))&0x1F;
     ut32 iv = *(buf+2);
 
+    op->size = 3;
     switch (opc) {
         case 0: //sb
             i = 5;
@@ -239,7 +242,8 @@ void disas_2(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
-    op->size = 3;
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst3 [] =
@@ -277,7 +281,7 @@ static const char *inst3 [] =
 
 void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     //bn.sfxx format
     ut8 ra = ((*(buf+1))&0x1F); //[12:8]
     ut8 rb = ((*(buf+2))&0xF8)>>3; //[7:3]
@@ -424,6 +428,8 @@ void disas_3(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst4 [] =
@@ -452,12 +458,13 @@ static const char *inst4 [] =
 
 void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xF);
     ut32 ia = ((*(buf+1))&0xE0)>>5; //[15:13]
     ut8 rb = (*(buf+1))&0x1F; //[12:8]
     ut32 iv = *(buf+2); //[7:0]
 
+    op->size = 3;
     switch (opc) {
         case 0: //beqi
             i = 1;
@@ -588,8 +595,8 @@ void disas_4(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         iv = extend_signed(iv, 18);
         snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst4[i], (ut32)a->pc+iv);
     }
-
-    op->size = 3;
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst5 [] =
@@ -600,7 +607,7 @@ static const char *inst5 [] =
 
 void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xF)>>2; //[19:18]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
     ut8 rb = ((*(buf+1))&0x1F); //[12:8]
@@ -608,6 +615,7 @@ void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     ut32 iv = ((*(buf+2))&0x3F); //[5:0]
     //ut8 c[] = { 2, 3, 4, 8 };
 
+    op->size = 3;
     switch (opc) {
         case 0: //mlwz
             i = 0;
@@ -624,8 +632,8 @@ void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x(%s),%s,0x%x",inst5[i], iv, reg[rb], reg[ra], ia);//c[ia]);
             break;
     }
-
-    op->size = 3;
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst6 [] =
@@ -654,7 +662,7 @@ static const char *inst6 [] =
 
 void disas_6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[19:18]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
     ut8 rb = ((*(buf+1))&0x1F); //[12:8]
@@ -758,6 +766,8 @@ void disas_6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst6[i], reg[ra], reg[rb], rc);
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst7 [] =
@@ -768,7 +778,7 @@ static const char *inst7 [] =
 
 void disas_7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xF)>>2; //[19:18]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
     ut8 rb = ((*(buf+1))&0x1F); //[12:8]
@@ -788,6 +798,8 @@ void disas_7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst8 [] =
@@ -805,7 +817,7 @@ static const char *inst8 [] =
 
 void disas_8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[43:42]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[41:37]
     ut8 rb = ((*(buf+1))&0x1F); //[36:32]
@@ -874,6 +886,8 @@ void disas_8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *inst9 [] =
@@ -895,7 +909,7 @@ static const char *inst9 [] =
 
 void disas_9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[43:42]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[41:37]
     ut8 rb = ((*(buf+1))&0x1F); //[36:32]
@@ -955,6 +969,8 @@ void disas_9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst9[i], reg[rb], iv);
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *insta [] =
@@ -992,7 +1008,7 @@ static const char *insta [] =
 
 void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[43:42]
     ut8 ia = ((*(buf+1))&0x3E)>>1; //[37:33]
     ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[32:28]
@@ -1154,6 +1170,8 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *instb [] =
@@ -1165,7 +1183,7 @@ static const char *instb [] =
 
 void disas_b(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[43:32]
     ut8 ra, rb, rc;
     ut32 iv, iy;
@@ -1199,6 +1217,8 @@ void disas_b(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x,0x%x",instb[i], iy, iv);
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *instc [] =
@@ -1216,7 +1236,7 @@ static const char *instc [] =
 
 void disas_c(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[27:26]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[25:21]
     ut8 rb = ((*(buf+1))&0x1F); //[20:16]
@@ -1285,6 +1305,8 @@ void disas_c(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             }
             break;
     }
+    if (i<0)
+        op->size = 0;
 }
 
 static const char *instd [] =
@@ -1314,12 +1336,13 @@ static const char *instd [] =
 
 void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    int i;
+    int i = -1;
     ut8 opc = ((*buf)&0xF); //[27:24]
     ut8 ia = ((*(buf+1))&0x3E)>>1; //[21:17]
     ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[16:12]
     ut32 iv = ((*(buf+2))&0xF)<<8 | *(buf+3); //[11:0]
 
+    op->size = 4;
     switch (opc) {
         case 0:
             switch (((*(buf+1))&0xC0)>>6) {
@@ -1436,8 +1459,8 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
         iv = extend_signed(iv, 16);
         snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",instd[i], reg[ia], reg[rb], iv);
     }
-
-    op->size = 4;
+    if (i<0)
+        op->size = 0;
 }
 
 void disas_e(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
