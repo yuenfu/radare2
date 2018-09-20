@@ -123,7 +123,8 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             if (rb&0x10) {
                 if (ra==0) { //nop
                     i = 7;
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
+                    iv = *(buf+1)&0xF;//[3:0]
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst0[i], iv);
                 }
                 else { //addi
                     i = 1;
@@ -134,7 +135,8 @@ void disas_0(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
             else {
                 if (ra==0) { //trap
                     i = 10;
-                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%s",inst0[i]);
+                    iv = *(buf+1)&0xF;//[3:0]
+                    snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x",inst0[i], iv);
                 }
                 else { //movi
                     i = 6;
