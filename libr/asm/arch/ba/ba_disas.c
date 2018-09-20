@@ -50,23 +50,6 @@ static const char *inst6 [] =
     "b.xor",
 };
 
-static const char *inst9 [] =
-{
-    "b.addi",
-    "b.andi",
-    "b.ori",
-    "b.sfeqi",
-    "b.sfgesi",
-    "b.sfgeui",
-    "b.sfgtsi",
-    "b.sfgtui",
-    "b.sflesi",
-    "b.sfleui",
-    "b.sfltsi",
-    "b.sfltui",
-    "b.sfnei",
-};
-
 /*
  * arg0: original value
  * arg1: effective bit
@@ -791,11 +774,85 @@ void disas_8(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     }
 }
 
+static const char *inst9 [] =
+{
+    "b.addi",
+    "b.andi",
+    "b.ori",
+    "b.sfeqi",
+    "b.sfgesi",
+    "b.sfgeui",
+    "b.sfgtsi",
+    "b.sfgtui",
+    "b.sflesi",
+    "b.sfleui",
+    "b.sfltsi",
+    "b.sfltui",
+    "b.sfnei",
+};
+
 void disas_9(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    ut8 opc = ((*buf)&0xC)>>2; //[43:42]
+    ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[41:37]
+    ut8 rb = ((*(buf+1))&0x1F); //[36:32]
+    ut32 iv = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[31:0]
+
     op->size = 6;
+    switch (opc) {
+        case 0: //addi
+            i = 0;
+            iv = extend_signed(iv, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst9[i], reg[ra], reg[rb], iv);
+            break;
+        case 1: //andi
+            i = 1;
+            iv = extend_signed(iv, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst9[i], reg[ra], reg[rb], iv);
+            break;
+        case 2: //ori
+            i = 2;
+            iv = extend_signed(iv, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst9[i], reg[ra], reg[rb], iv);
+            break;
+        case 3:
+            switch ((*buf&0x3)<<2|((*(buf+1))&0xC0)>>6) { //[41:38]
+                case 6: //sfeqi
+                    i = 3;
+                    break;
+                case 7: //sfnei
+                    i = 12;
+                    break;
+                case 8: //sfgesi
+                    i = 4;
+                    break;
+                case 9: //sfgeui
+                    i = 5;
+                    break;
+                case 10: //sfgtsi
+                    i = 6;
+                    break;
+                case 11: //sfgtui
+                    i = 7;
+                    break;
+                case 12: //sflesi
+                    i = 8;
+                    break;
+                case 13: //sfleui
+                    i = 9;
+                    break;
+                case 14: //sfltsi
+                    i = 10;
+                    break;
+                case 15: //sfltui
+                    i = 11;
+                    break;
+            }
+            iv = extend_signed(iv, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x",inst9[i], reg[rb], iv);
+            break;
+    }
 }
 
 static const char *insta [] =
