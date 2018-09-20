@@ -670,7 +670,7 @@ void disas_7(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     ut8 opc = ((*buf)&0xF)>>2; //[19:18]
     ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
     ut8 rb = ((*(buf+1))&0x1F); //[12:8]
-    ut8 rc = ((*(buf+2))&0xF1)>>3; //[7:3]
+    ut8 rc = ((*(buf+2))&0xF8)>>3; //[7:3]
     ut32 iv = ((*(buf+2))&0x07); //[2:0]
 
     op->size = 3;
