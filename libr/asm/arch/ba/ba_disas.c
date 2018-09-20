@@ -24,31 +24,6 @@ char *reg [] =
  * bg: 4B inst
  * bw: 6B inst
  */
-static const char *inst6 [] =
-{
-    "b.aadd",
-    "b.add",
-    "b.addc",
-    "b.and",
-    "b.cmov",
-    "b.cmpxchg",
-    "b.div",
-    "b.divu",
-    "b.flb",
-    "b.nand",
-    "b.or",
-    "b.ror",
-    "b.rori",
-    "b.sll",
-    "b.slli",
-    "b.sra",
-    "b.srai",
-    "b.srl",
-    "b.srli",
-    "b.sub",
-    "b.subb",
-    "b.xor",
-};
 
 /*
  * arg0: original value
@@ -651,11 +626,136 @@ void disas_5(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     op->size = 3;
 }
 
+static const char *inst6 [] =
+{
+    "b.aadd",
+    "b.add",
+    "b.addc",
+    "b.and",
+    "b.cmov",
+    "b.cmpxchg",
+    "b.flb",
+    "b.nand",
+    "b.or",
+    "b.ror",
+    "b.rori",
+    "b.sll",
+    "b.slli",
+    "b.sra",
+    "b.srai",
+    "b.srl",
+    "b.srli",
+    "b.sub",
+    "b.subb",
+    "b.xor",
+};
+
 void disas_6(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "pending";
-    strcpy(op->buf_asm, str);
+    int i;
+    ut8 opc = ((*buf)&0xC)>>2; //[19:18]
+    ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[17:13]
+    ut8 rb = ((*(buf+1))&0x1F); //[12:8]
+    ut8 rc = ((*(buf+2))&0xF8)>>3; //[7:3]
+
     op->size = 3;
+    switch (opc) {
+        case 0:
+            switch ((*(buf+2))&0x7) { //[2:0]
+                case 0: //and
+                    i = 3;
+                    break;
+                case 1: //or
+                    i = 8;
+                    break;
+                case 2: //xor
+                    i = 19;
+                    break;
+                case 3: //nand
+                    i = 7;
+                    break;
+                case 4: //add
+                    i = 1;
+                    break;
+                case 5: //sub
+                    i = 17;
+                    break;
+                case 6: //sll
+                    i = 11;
+                    break;
+                case 7: //srl
+                    i = 15;
+                    break;
+            }
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%s",inst6[i], reg[ra], reg[rb], reg[rc]);
+            break;
+        case 1:
+            switch ((*(buf+2))&0x7) { //[2:0]
+                case 0: //sra
+                    i = 13;
+                    break;
+                case 1: //ror
+                    i = 9;
+                    break;
+                case 2: //cmov
+                    i = 4;
+                    break;
+                //case 3: //mul
+                //    break;
+                //case 4: //div
+                //    break;
+                //case 5: //divu
+                //    break;
+                case 7: //addc
+                    i = 2;
+                    break;
+            }
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%s",inst6[i], reg[ra], reg[rb], reg[rc]);
+            break;
+        case 2:
+            switch ((*(buf+2))&0x7) { //[2:0]
+                case 0: //subb
+                    i = 18;
+                    break;
+                case 1: //flb
+                    i = 6;
+                    break;
+                //case 2: //mulhu
+                //    break;
+                //case 3: //mulh
+                //    break;
+                //case 4: //mod
+                //    break;
+                //case 5: //modu
+                //    break;
+                case 6: //aadd
+                    i = 0;
+                    break;
+                case 7: //cmpxchg
+                    i = 5;
+                    break;
+            }
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%s",inst6[i], reg[ra], reg[rb], reg[rc]);
+            break;
+        case 3:
+            switch ((*(buf+2))&0x3) { //[1:0]
+                case 0: //slli
+                    i = 12;
+                    break;
+                case 1: //srli
+                    i = 16;
+                    break;
+                case 2: //srai
+                    i = 14;
+                    break;
+                case 3: //rori
+                    i = 10;
+                    break;
+            }
+            rc = extend_unsigned(rc, 5);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,0x%x",inst6[i], reg[ra], reg[rb], rc);
+            break;
+    }
 }
 
 static const char *inst7 [] =
