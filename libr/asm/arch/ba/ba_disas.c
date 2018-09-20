@@ -1154,11 +1154,49 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
     }
 }
 
+static const char *instb [] =
+{
+    "b.cop",
+    "b.copd",
+    "b.copdss",
+};
+
 void disas_b(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
-    char str[] = "non-support";
-    strcpy(op->buf_asm, str);
-    op->size = 0;
+    int i;
+    ut8 opc = ((*buf)&0xC)>>2; //[43:32]
+    ut8 ra, rb, rc;
+    ut32 iv, iy;
+
+    op->size = 6;
+    switch (opc) {
+        case 0: //copdss
+            i = 2;
+            ra = ((*(buf))&0x3)<<8 | *(buf+1); //[41:37]
+            rb = ((*(buf+1))&0x1F); //[36:32]
+            rc = ((*(buf+2))&0xF8)>>8; //[31:27]
+            iv = (*(buf+2)&7)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[31:0]
+            iv = extend_unsigned(iv, 27);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,%s,%s,0x%x",instb[i], reg[ra], reg[rb], reg[rc], iv);
+            break;
+        case 1: //copd
+            i = 1;
+            ra = ((*(buf))&0x3)<<8 | *(buf+1); //[41:37]
+            iv = ((*(buf+1))&0x1F); //[36:32]
+            iv = extend_unsigned(iv, 5);
+            iy = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[31:0]
+            iy = extend_signed(iy, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s%s,0x%x,0x%x",instb[i], reg[ra], iy, iv);
+            break;
+        case 2: //cop
+            i = 0;
+            iv = ((*(buf))&0x3)<<8 | *(buf+1); //[41:37]
+            iv = extend_unsigned(iv, 10);
+            iy = *(buf+2)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[31:0]
+            iy = extend_signed(iy, 32);
+            snprintf(op->buf_asm, R_ASM_BUFSIZE + 1, "%-11s0x%x,0x%x",instb[i], iy, iv);
+            break;
+    }
 }
 
 static const char *instc [] =
