@@ -57,7 +57,7 @@ static ut32 extend_signed(ut32 n, ut32 s)
     n>>=(32-s);
 
     // 2. sign extesion
-    if (n & 1<<(s-1)) {
+    if ((s<32) && (n & 1<<(s-1))) {
         n |= ~((1<<s)-1);
     }
     return n;
