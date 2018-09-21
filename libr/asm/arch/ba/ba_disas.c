@@ -1012,7 +1012,7 @@ void disas_a(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i = -1;
     ut8 opc = ((*buf)&0xC)>>2; //[43:42]
-    ut8 ia = ((*(buf+1))&0x3E)>>1; //[37:33]
+    ut32 ia = ((*(buf+1))&0x3E)>>1; //[37:33]
     ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[32:28]
     ut32 iv = ((*(buf+2))&0xF)<<24 | *(buf+3)<<16 | *(buf+4)<<8 | *(buf+5); //[27:0]
 
@@ -1340,7 +1340,7 @@ void disas_d(RAsm *a, RAsmOp *op, const ut8 *buf, ut64 len)
 {
     int i = -1;
     ut8 opc = ((*buf)&0xF); //[27:24]
-    ut8 ia = ((*(buf+1))&0x3E)>>1; //[21:17]
+    ut32 ia = ((*(buf+1))&0x3E)>>1; //[21:17]
     ut8 rb = ((*(buf+1))&0x1)<<4 | ((*(buf+2))&0xF0)>>4; //[16:12]
     ut32 iv = ((*(buf+2))&0xF)<<8 | *(buf+3); //[11:0]
 
