@@ -330,7 +330,8 @@ void anal_4(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
                     ia = rb & 0xF;
                     ia = extend_unsigned(ia, 4);
                     iv = extend_unsigned(iv, 8);
-                    op->type = R_ANAL_OP_TYPE_RET | R_ANAL_OP_TYPE_POP;
+                    op->type = R_ANAL_OP_TYPE_RET;// | R_ANAL_OP_TYPE_POP;
+                    //op->eob = true;
                     break;
                 case 12: //rtnei
                     ia = rb & 0xF;
