@@ -1942,6 +1942,8 @@ char* Elf_(r_bin_elf_get_arch)(ELFOBJ *bin) {
 		return strdup ("microblaze.gnu");
 	case EM_RISCV:
 		return strdup ("riscv");
+	case EM_BA:
+		return strdup ("ba");
 	case EM_VAX:
 		return strdup ("vax");
 	case EM_XTENSA:
@@ -2043,6 +2045,7 @@ char* Elf_(r_bin_elf_get_machine_name)(ELFOBJ *bin) {
 	case EM_PROPELLER:   return strdup ("Parallax Propeller");
 	case EM_MICROBLAZE:  return strdup ("Xilinx MicroBlaze");
 	case EM_RISCV:       return strdup ("RISC V");
+	case EM_BA:          return strdup ("Beyond Architecture");
 	case EM_VIDEOCORE3:  return strdup ("VideoCore III");
 	case EM_VIDEOCORE4:  return strdup ("VideoCore IV");
 	default:             return r_str_newf ("<unknown>: 0x%x", bin->ehdr.e_machine);

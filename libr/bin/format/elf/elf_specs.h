@@ -73,6 +73,7 @@
 #define EM_MCST_ELBRUS         175
 #define EM_PROPELLER           0x5072
 #define EM_RISCV               243
+#define EM_BA                  0x8472
 #define EM_LANAI               0x8123
 #define EM_VIDEOCORE           95 // XXX dupe for EM_NUM
 #define EM_VIDEOCORE3          137

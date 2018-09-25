@@ -254,6 +254,7 @@ extern RAsmPlugin r_asm_plugin_hexagon;
 extern RAsmPlugin r_asm_plugin_hexagon_gnu;
 extern RAsmPlugin r_asm_plugin_wasm;
 extern RAsmPlugin r_asm_plugin_tms320c64x;
+extern RAsmPlugin r_asm_plugin_ba;
 
 #endif
 
