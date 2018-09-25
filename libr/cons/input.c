@@ -222,6 +222,7 @@ R_API int r_cons_fgets(char *buf, int len, int argc, const char **argv) {
 	r_cons_enable_mouse (false);
 	r_cons_flush ();
 #endif
+	errno = 0;
 	if (cons->user_fgets) {
 		RETURN (cons->user_fgets (buf, len));
 	}
@@ -232,8 +233,9 @@ R_API int r_cons_fgets(char *buf, int len, int argc, const char **argv) {
 	if (color) {
 		const char *p = cons->pal.input;
 		int len = p? strlen (p): 0;
-		if (len>0)
+		if (len > 0) {
 			fwrite (p, len, 1, stdout);
+		}
 		fflush (stdout);
 	}
 	if (!fgets (buf, len, cons->fdin)) {
@@ -250,14 +252,11 @@ R_API int r_cons_fgets(char *buf, int len, int argc, const char **argv) {
 		RETURN (-2);
 	}
 	buf[strlen (buf)-1] = '\0';
-	if (color) printf (Color_RESET);
+	if (color) {
+		printf (Color_RESET);
+	}
 	ret = strlen (buf);
 beach:
-#if __UNIX__
-	if (errno == EINTR) {
-		ret = 0;
-	}
-#endif
 	//r_cons_enable_mouse (mouse);
 	return ret;
 }
@@ -286,12 +285,15 @@ do_it_again:
 	h = GetStdHandle (STD_INPUT_HANDLE);
 	GetConsoleMode (h, &mode);
 	SetConsoleMode (h, 0 | ENABLE_MOUSE_INPUT); // RAW
+	void *bed = r_cons_sleep_begin ();
 	if (usec) {
 		if (WaitForSingleObject (h, usec) == WAIT_TIMEOUT) {
+			r_cons_sleep_end (bed);
 			return -1;
 		}
 	}
 	ret = ReadConsoleInput (h, irInBuf, 128, &out);
+	r_cons_sleep_end (bed);
 	if (ret) {
 		for (i = 0; i < out; i++) {
 			if (irInBuf[i].EventType==MOUSE_EVENT) {
@@ -450,7 +452,13 @@ R_API void r_cons_switchbuf(bool active) {
 	bufactive = active;
 }
 
+#if !(__WINDOWS__ && !__CYGWIN__)
+extern volatile sig_atomic_t sigwinchFlag;
+extern void resizeWin(void);
+#endif
+
 R_API int r_cons_readchar() {
+	void *bed;
 	char buf[2];
 	buf[0] = -1;
 	if (readbuffer_length > 0) {
@@ -469,7 +477,9 @@ R_API int r_cons_readchar() {
 	HANDLE h = GetStdHandle (STD_INPUT_HANDLE);
 	GetConsoleMode (h, &mode);
 	SetConsoleMode (h, 0); // RAW
+	bed = r_cons_sleep_begin ();
 	ret = ReadConsole (h, buf, 1, &out, NULL);
+	r_cons_sleep_end (bed);
 	FlushConsoleInputBuffer (h);
 	if (!ret) {
 		return -1;
@@ -477,7 +487,34 @@ R_API int r_cons_readchar() {
 	SetConsoleMode (h, mode);
 #else
 	r_cons_set_raw (1);
-	if (read (0, buf, 1) == -1) {
+	bed = r_cons_sleep_begin ();
+
+	// Blocks until either stdin has something to read or a signal happens.
+	// This serves to check if the terminal window was resized. It avoids the race
+	// condition that could happen if we did not use pselect or select in case SIGWINCH
+	// was handled immediately before the blocking call (select or read). The race is
+	// prevented from happening by having SIGWINCH blocked process-wide except for in
+	// pselect (that is what pselect is for).
+	fd_set readfds;
+	sigset_t sigmask;
+	FD_ZERO (&readfds);
+	FD_SET (STDIN_FILENO, &readfds);
+	r_signal_sigmask (0, NULL, &sigmask);
+	sigdelset (&sigmask, SIGWINCH);
+	while (pselect (STDIN_FILENO + 1, &readfds, NULL, NULL, NULL, &sigmask) == -1) {
+		if (errno == EBADF) {
+			eprintf ("r_cons_readchar(): EBADF\n");
+			return -1;
+		}
+		if (sigwinchFlag) {
+			sigwinchFlag = 0;
+			resizeWin ();
+		}
+	}
+
+	ssize_t ret = read (STDIN_FILENO, buf, 1);
+	r_cons_sleep_end (bed);
+	if (ret != 1) {
 		return -1;
 	}
 	if (bufactive) {

@@ -6,9 +6,12 @@
 #include <r_bin.h>
 #include <r_io.h>
 #include <r_cons.h>
-// #include "../../../shlr/lz4/lz4.h"
-#include "../../../shlr/lz4/lz4.c"
 #include "nxo/nxo.h"
+#ifdef R_MESON_VERSION
+#include <lz4.h>
+#else
+#include "../../../shlr/lz4/lz4.c"
+#endif
 
 #define NSO_OFF(x) r_offsetof (NSOHeader, x)
 #define NSO_OFFSET_MODMEMOFF r_offsetof (NXOStart, mod_memoffset)
@@ -64,7 +67,7 @@ static void *load_bytes(RBinFile *bf, const ut8 *buf, ut64 sz, ut64 loadaddr, Sd
 	RBuffer *newbuf = r_buf_new_empty (total_size);
 	ut64 ba = baddr (bf);
 
-	if (rbin->iob.io && !(rbin->iob.io->cached & R_IO_WRITE)) {
+	if (rbin->iob.io && !(rbin->iob.io->cached & R_PERM_W)) {
 		eprintf ("Please add \'-e io.cache=true\' option to r2 command\n");
 		goto fail;
 	}
@@ -162,7 +165,7 @@ static RList *sections(RBinFile *bf) {
 	ptr->vsize = readLE32 (b, NSO_OFF (text_memoffset));
 	ptr->paddr = 0;
 	ptr->vaddr = 0;
-	ptr->srwx = R_BIN_SCN_READABLE;
+	ptr->perm = R_PERM_R;
 	ptr->add = false;
 	r_list_append (ret, ptr);
 
@@ -175,7 +178,7 @@ static RList *sections(RBinFile *bf) {
 	ptr->size = ptr->vsize;
 	ptr->paddr = readLE32 (b, NSO_OFF (text_memoffset));
 	ptr->vaddr = readLE32 (b, NSO_OFF (text_loc)) + ba;
-	ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_EXECUTABLE;	// r-x
+	ptr->perm = R_PERM_RX;	// r-x
 	ptr->add = true;
 	r_list_append (ret, ptr);
 
@@ -188,7 +191,7 @@ static RList *sections(RBinFile *bf) {
 	ptr->size = ptr->vsize;
 	ptr->paddr = readLE32 (b, NSO_OFF (ro_memoffset));
 	ptr->vaddr = readLE32 (b, NSO_OFF (ro_loc)) + ba;
-	ptr->srwx = R_BIN_SCN_READABLE;	// r--
+	ptr->perm = R_PERM_R;	// r--
 	ptr->add = true;
 	r_list_append (ret, ptr);
 
@@ -201,7 +204,7 @@ static RList *sections(RBinFile *bf) {
 	ptr->size = ptr->vsize;
 	ptr->paddr = readLE32 (b, NSO_OFF (data_memoffset));
 	ptr->vaddr = readLE32 (b, NSO_OFF (data_loc)) + ba;
-	ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_WRITABLE;	// rw-
+	ptr->perm = R_PERM_RW;
 	ptr->add = true;
 	eprintf ("BSS Size 0x%08"PFMT64x "\n", (ut64)
 		readLE32 (bf->buf, NSO_OFF (bss_size)));
@@ -210,15 +213,11 @@ static RList *sections(RBinFile *bf) {
 }
 
 static RList *symbols(RBinFile *bf) {
-	RBinNXOObj *bin;
 	if (!bf || !bf->o || !bf->o->bin_obj) {
 		return NULL;
 	}
-	bin = (RBinNXOObj*) bf->o->bin_obj;
-	if (!bin) {
-		return NULL;
-	}
-	return bin->methods_list;
+	RBinNXOObj *bin = (RBinNXOObj*) bf->o->bin_obj;
+	return bin? bin->methods_list: NULL;
 }
 
 static RList *imports(RBinFile *bf) {
@@ -284,7 +283,7 @@ RBinPlugin r_bin_plugin_nso = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_nso,
 	.version = R2_VERSION

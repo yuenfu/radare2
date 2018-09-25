@@ -1,4 +1,4 @@
-/* radare2 - LGPL - Copyright 2016 - pancake */
+/* radare2 - LGPL - Copyright 2016-2018 - pancake */
 
 #include <r_types.h>
 #include <r_util.h>
@@ -132,7 +132,7 @@ static RList* sections(RBinFile *bf) {
 	ptr->vsize = ptr->size + (ptr->size % 4096);
 	ptr->paddr = r_read_ble32 (buf + 12, false);
 	ptr->vaddr = ptr->paddr + baddr (bf);
-	ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_EXECUTABLE; // r-x
+	ptr->perm = R_PERM_RX; // r-x
 	ptr->add = true;
 	r_list_append (ret, ptr);
 
@@ -148,7 +148,7 @@ static RList* sections(RBinFile *bf) {
 		ptr->vsize = ptr->size + (ptr->size % 4096);
 		ptr->paddr = r_read_ble32 (buf + 40, false);
 		ptr->vaddr = ptr->paddr + baddr (bf);
-		ptr->srwx = R_BIN_SCN_READABLE; // r--
+		ptr->perm = R_PERM_R; // r--
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -193,7 +193,7 @@ static ut64 size(RBinFile *bf) {
 /* inspired in http://www.phreedom.org/solar/code/tinype/tiny.97/tiny.asm */
 static RBuffer* create(RBin* bin, const ut8 *code, int codelen, const ut8 *data, int datalen) {
 	RBuffer *buf = r_buf_new ();
-#define B(x,y) r_buf_append_bytes(buf,(const ut8*)x,y)
+#define B(x,y) r_buf_append_bytes(buf,(const ut8*)(x),y)
 #define D(x) r_buf_append_ut32(buf,x)
 	B ("MENUET01", 8);
 	D (1); // header version
@@ -222,7 +222,7 @@ RBinPlugin r_bin_plugin_menuet = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_menuet,
 	.version = R2_VERSION

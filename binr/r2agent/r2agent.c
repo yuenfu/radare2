@@ -91,24 +91,26 @@ int main(int argc, char **argv) {
 		r_socket_free (s);
 		return 1;
 	}
-	
+
 	eprintf ("http://localhost:%d/\n", s->port);
 	if (dosandbox && !r_sandbox_enable (true)) {
 		eprintf ("sandbox: Cannot be enabled.\n");
 		return 1;
 	}
-	while (!r_cons_singleton ()->breaked) {
+	while (!r_cons_singleton ()->context->breaked) {
 		char *result_heap = NULL;
 		const char *result = page_index;
 
-		rs = r_socket_http_accept (s, timeout);
-		if (!rs) continue;
+		rs = r_socket_http_accept (s, 0, timeout);
+		if (!rs) {
+			continue;
+		}
 		if (!strcmp (rs->method, "GET")) {
 			if (!strncmp (rs->path, "/proc/kill/", 11)) {
 				// TODO: show page here?
 				int pid = atoi (rs->path + 11);
 				if (pid > 0) {
-					kill (pid, 9);
+					kill (pid, SIGKILL);
 				}
 			} else if (!strncmp (rs->path, "/file/open/", 11)) {
 				int pid;

@@ -78,7 +78,7 @@ static RList *sections(RBinFile *bf) {
 	ptr->vsize = textsize + (textsize % 4096);
 	ptr->paddr = 8 * 4;
 	ptr->vaddr = ptr->paddr;
-	ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_EXECUTABLE; // r-x
+	ptr->perm = R_PERM_RX; // r-x
 	ptr->add = true;
 	r_list_append (ret, ptr);
 	// add data segment
@@ -92,7 +92,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->vsize = datasize + (datasize % 4096);
 		ptr->paddr = textsize + (8 * 4);
 		ptr->vaddr = ptr->paddr;
-		ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_WRITABLE; // rw-
+		ptr->perm = R_PERM_RW;
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -108,7 +108,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->vsize = symssize + (symssize % 4096);
 		ptr->paddr = datasize + textsize + (8 * 4);
 		ptr->vaddr = ptr->paddr;
-		ptr->srwx = R_BIN_SCN_READABLE; // r--
+		ptr->perm = R_PERM_R; // r--
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -123,7 +123,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->vsize = spszsize + (spszsize % 4096);
 		ptr->paddr = symssize + datasize + textsize + (8 * 4);
 		ptr->vaddr = ptr->paddr;
-		ptr->srwx = R_BIN_SCN_READABLE; // r--
+		ptr->perm = R_PERM_R; // r--
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -138,7 +138,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->vsize = pcszsize + (pcszsize % 4096);
 		ptr->paddr = spszsize + symssize + datasize + textsize + (8 * 4);
 		ptr->vaddr = ptr->paddr;
-		ptr->srwx = R_BIN_SCN_READABLE; // r--
+		ptr->perm = R_PERM_R; // r--
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -207,7 +207,7 @@ static ut64 size(RBinFile *bf) {
 /* inspired in http://www.phreedom.org/solar/code/tinype/tiny.97/tiny.asm */
 static RBuffer *create(RBin *bin, const ut8 *code, int codelen, const ut8 *data, int datalen) {
 	RBuffer *buf = r_buf_new ();
-#define B(x, y) r_buf_append_bytes (buf, (const ut8 *) x, y)
+#define B(x, y) r_buf_append_bytes (buf, (const ut8 *) (x), y)
 #define D(x) r_buf_append_ut32 (buf, x)
 	D (I_MAGIC); // i386 only atm
 	D (codelen);
@@ -245,7 +245,7 @@ RBinPlugin r_bin_plugin_p9 = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_p9,
 	.version = R2_VERSION

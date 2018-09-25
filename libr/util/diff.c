@@ -38,6 +38,7 @@ typedef struct {
 	char *str;
 } RDiffUser;
 
+#if 0
 // XXX buffers_static doesnt constructs the correct string in this callback
 static int tostring(RDiff *d, void *user, RDiffOp *op) {
 	RDiffUser *u = (RDiffUser*)user;
@@ -70,6 +71,7 @@ static int tostring(RDiff *d, void *user, RDiffOp *op) {
 	}
 	return 1;
 }
+#endif
 
 R_API char *r_diff_buffers_to_string(RDiff *d, const ut8 *a, int la, const ut8 *b, int lb) {
 #if 1
@@ -422,8 +424,9 @@ out:
 }
 
 R_API bool r_diff_buffers_distance_original(RDiff *diff, const ut8 *a, ut32 la, const ut8 *b, ut32 lb, ut32 *distance, double *similarity) {
-	if (!a || !b)
+	if (!a || !b) {
 		return false;
+	}
 
 	const bool verbose = diff ? diff->verbose : false;
 	const ut32 length = R_MAX (la, lb);

@@ -1,4 +1,4 @@
-/* radare2 - LGPL - Copyright 2016-2017 - Davis, Alex Kornitzer */
+/* radare2 - LGPL - Copyright 2016-2018 - Davis, Alex Kornitzer */
 
 #include <r_types.h>
 #include <r_util.h>
@@ -108,7 +108,8 @@ static RBinInfo *info(RBinFile *bf) {
 			ret->bits = 64;
 			break;
 		default:
-			strncpy (ret->machine, "Unknown", R_BIN_SIZEOF_STRINGS);
+			ret->machine = strdup ("Unknown");
+			break;
 		}
 
 		switch (obj->streams.system_info->product_type) {
@@ -240,7 +241,7 @@ static RList *sections(RBinFile *bf) {
 			return ret;
 		}
 
-		strncpy(ptr->name, "Memory_Section", 14);
+		strcpy (ptr->name, "Memory_Section");
 		ptr->paddr = (memory->memory).rva;
 		ptr->size = (memory->memory).data_size;
 		ptr->vaddr = memory->start_of_memory_range;
@@ -248,7 +249,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->add = true;
 		ptr->has_strings = false;
 
-		ptr->srwx = r_bin_mdmp_get_srwx (obj, ptr->vaddr);
+		ptr->perm = r_bin_mdmp_get_perm (obj, ptr->vaddr);
 
 		r_list_append (ret, ptr);
 	}
@@ -259,7 +260,7 @@ static RList *sections(RBinFile *bf) {
 			return ret;
 		}
 
-		strncpy(ptr->name, "Memory_Section", 14);
+		strcpy (ptr->name, "Memory_Section");
 		ptr->paddr = index;
 		ptr->size = memory64->data_size;
 		ptr->vaddr = memory64->start_of_memory_range;
@@ -267,7 +268,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->add = true;
 		ptr->has_strings = false;
 
-		ptr->srwx = r_bin_mdmp_get_srwx (obj, ptr->vaddr);
+		ptr->perm = r_bin_mdmp_get_perm (obj, ptr->vaddr);
 
 		r_list_append (ret, ptr);
 
@@ -279,6 +280,9 @@ static RList *sections(RBinFile *bf) {
 		if (!(ptr = R_NEW0 (RBinSection))) {
 			return ret;
 		}
+		if (module->module_name_rva > obj->b->length) {
+			continue;
+		}
 
 		str = (struct minidump_string *)(obj->b->buf + module->module_name_rva);
 		r_str_utf16_to_utf8 ((ut8 *)ptr->name, R_BIN_SIZEOF_STRINGS, (const ut8 *)&(str->buffer), str->length, obj->endian);
@@ -289,7 +293,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->add = false;
 		ptr->has_strings = false;
 		/* As this is an encompassing section we will set the RWX to 0 */
-		ptr->srwx = 0;
+		ptr->perm = 0;
 
 		r_list_append (ret, ptr);
 
@@ -316,7 +320,7 @@ static RList *sections(RBinFile *bf) {
 }
 
 static RList *mem (RBinFile *bf) {
-	struct minidump_location_descriptor *location;
+	struct minidump_location_descriptor *location = NULL;
 	struct minidump_memory_descriptor *module;
 	struct minidump_memory_descriptor64 *module64;
 	struct minidump_memory_info *mem_info;
@@ -340,8 +344,8 @@ static RList *mem (RBinFile *bf) {
 			return ret;
 		}
 		ptr->addr = module->start_of_memory_range;
-		ptr->size = (location->data_size);
-		ptr->perms = r_bin_mdmp_get_srwx (obj, ptr->addr);
+		ptr->size = location? location->data_size: 0;
+		ptr->perms = r_bin_mdmp_get_perm (obj, ptr->addr);
 
 		/* [1] */
 		state = type = a_protect = 0;
@@ -363,7 +367,7 @@ static RList *mem (RBinFile *bf) {
 		}
 		ptr->addr = module64->start_of_memory_range;
 		ptr->size = module64->data_size;
-		ptr->perms = r_bin_mdmp_get_srwx (obj, ptr->addr);
+		ptr->perms = r_bin_mdmp_get_perm (obj, ptr->addr);
 
 		/* [1] */
 		state = type = a_protect = 0;
@@ -487,7 +491,7 @@ RBinPlugin r_bin_plugin_mdmp = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_mdmp,
 	.version = R2_VERSION

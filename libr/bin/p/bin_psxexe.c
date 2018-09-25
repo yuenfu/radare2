@@ -1,4 +1,4 @@
-/* radare - LGPL - Copyright 2015-2016 - Dax89, pancake */
+/* radare - LGPL - Copyright 2015-2018 - Dax89, pancake */
 
 #include <string.h>
 #include <r_types.h>
@@ -27,8 +27,9 @@ static RBinInfo* info(RBinFile* bf) {
 		return NULL;
 	}
 
-	if (!(ret = R_NEW0 (RBinInfo)))
+	if (!(ret = R_NEW0 (RBinInfo))) {
 		return NULL;
+	}
 
 	ret->file = strdup (bf->file);
 	ret->type = strdup ("Sony PlayStation 1 Executable");
@@ -50,7 +51,7 @@ static RList* sections(RBinFile* bf) {
 		return NULL;
 	}
 
-	if(!(sect = R_NEW0 (RBinSection))) {
+	if (!(sect = R_NEW0 (RBinSection))) {
 		r_list_free (ret);
 		return NULL;
 	}
@@ -69,7 +70,7 @@ static RList* sections(RBinFile* bf) {
 	sect->size = sz - PSXEXE_TEXTSECTION_OFFSET;
 	sect->vaddr = psxheader.t_addr;
 	sect->vsize = psxheader.t_size;
-	sect->srwx = R_BIN_SCN_EXECUTABLE;
+	sect->perm = R_PERM_RX;
 	sect->add = true;
 	sect->has_strings = true;
 
@@ -82,8 +83,9 @@ static RList* entries(RBinFile* bf) {
 	RBinAddr* addr = NULL;
 	psxexe_header psxheader;
 
-	if (!(ret = r_list_new ()))
+	if (!(ret = r_list_new ())) {
 		return NULL;
+	}
 
 	if (!(addr = R_NEW0 (RBinAddr))) {
 		r_list_free (ret);
@@ -104,6 +106,11 @@ static RList* entries(RBinFile* bf) {
 	return ret;
 }
 
+static RList* strings(RBinFile* bf) {
+	// hardcode minstrlen = 20
+	return r_bin_file_get_strings (bf, 20, 0, 2);
+}
+
 RBinPlugin r_bin_plugin_psxexe = {
 	.name = "psxexe",
 	.desc = "Sony PlayStation 1 Executable",
@@ -113,10 +120,11 @@ RBinPlugin r_bin_plugin_psxexe = {
 	.info = &info,
 	.sections = &sections,
 	.entries = &entries,
+	.strings = &strings,
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_psxexe,
 	.version = R2_VERSION

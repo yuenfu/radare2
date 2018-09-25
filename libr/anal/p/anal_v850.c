@@ -12,17 +12,33 @@
 #include <v850_disas.h>
 
 static void update_flags(RAnalOp *op, int flags) {
-	if (flags & V850_FLAG_CY) r_strbuf_append (&op->esil, ",$c31,cy,=");
-	if (flags & V850_FLAG_OV) r_strbuf_append (&op->esil, ",$o,ov,=");
-	if (flags & V850_FLAG_S) r_strbuf_append (&op->esil, ",$s,s,=");
-	if (flags & V850_FLAG_Z) r_strbuf_append (&op->esil, ",$z,z,=");
+	if (flags & V850_FLAG_CY) {
+		r_strbuf_append (&op->esil, ",$c31,cy,=");
+	}
+	if (flags & V850_FLAG_OV) {
+		r_strbuf_append (&op->esil, ",$o,ov,=");
+	}
+	if (flags & V850_FLAG_S) {
+		r_strbuf_append (&op->esil, ",$s,s,=");
+	}
+	if (flags & V850_FLAG_Z) {
+		r_strbuf_append (&op->esil, ",$z,z,=");
+	}
 }
 
 static void clear_flags(RAnalOp *op, int flags) {
-	if (flags & V850_FLAG_CY) r_strbuf_append (&op->esil, ",0,cy,=");
-	if (flags & V850_FLAG_OV) r_strbuf_append (&op->esil, ",0,ov,=");
-	if (flags & V850_FLAG_S) r_strbuf_append (&op->esil, ",0,s,=");
-	if (flags & V850_FLAG_Z) r_strbuf_append (&op->esil, ",0,z,=");
+	if (flags & V850_FLAG_CY) {
+		r_strbuf_append (&op->esil, ",0,cy,=");
+	}
+	if (flags & V850_FLAG_OV) {
+		r_strbuf_append (&op->esil, ",0,ov,=");
+	}
+	if (flags & V850_FLAG_S) {
+		r_strbuf_append (&op->esil, ",0,s,=");
+	}
+	if (flags & V850_FLAG_Z) {
+		r_strbuf_append (&op->esil, ",0,z,=");
+	}
 }
 
 static int v850_op(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len) {
@@ -41,7 +57,7 @@ static int v850_op(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 	r_strbuf_init (&op->esil);
 	r_strbuf_set (&op->esil, "");
 
-	ret = op->size = v850_decode_command (buf, &cmd);
+	ret = op->size = v850_decode_command (buf, len, &cmd);
 
 	if (ret <= 0) {
 		return ret;
@@ -359,6 +375,7 @@ static char *get_reg_profile(RAnal *anal) {
 		"=OF	ov\n"
 		"=CF	cy\n"
 
+		"gpr	zero	.32	?   0\n"
 		"gpr	r0	.32	0   0\n"
 		"gpr	r1	.32	4   0\n"
 		"gpr	r2	.32	8   0\n"
@@ -417,7 +434,7 @@ RAnalPlugin r_anal_plugin_v850 = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_ANAL,
 	.data = &r_anal_plugin_v850,
 	.version = R2_VERSION

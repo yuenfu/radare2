@@ -72,7 +72,7 @@ static RList *patch_relocs(RBin *b) {
 	if (!b || !b->iob.io || !b->iob.io->desc) {
 		return NULL;
 	}
-	if (!(b->iob.io->cached & R_IO_WRITE)) {
+	if (!(b->iob.io->cached & R_PERM_W)) {
 		eprintf (
 			"Warning: please run r2 with -e io.cache=true to patch "
 			"relocations\n");
@@ -322,7 +322,7 @@ RBinPlugin r_bin_plugin_bflt = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_bflt,
 	.version = R2_VERSION

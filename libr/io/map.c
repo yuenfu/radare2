@@ -1,4 +1,4 @@
-/* radare2 - LGPL - Copyright 2017 - condret, MaskRay */
+/* radare2 - LGPL - Copyright 2017-2018 - condret, MaskRay */
 
 #include <r_io.h>
 #include <stdlib.h>
@@ -7,7 +7,7 @@
 #include "r_util.h"
 #include "r_vector.h"
 
-#define END_OF_MAP_IDS  0xffffffff
+#define END_OF_MAP_IDS UT32_MAX
 
 #define MAP_USE_HALF_CLOSED 0
 
@@ -34,7 +34,7 @@ static int _cmp_map_event_by_id(const void *a_, const void *b_) {
 }
 
 // Precondition: from == 0 && to == 0 (full address) or from < to
-static bool _map_skyline_push(RVector *map_skyline, ut64 from, ut64 to, RIOMap *map) {
+static bool _map_skyline_push(RPVector *map_skyline, ut64 from, ut64 to, RIOMap *map) {
 	RIOMapSkyline *part = R_NEW (RIOMapSkyline), *part1;
 	if (!part) {
 		return false;
@@ -49,11 +49,11 @@ static bool _map_skyline_push(RVector *map_skyline, ut64 from, ut64 to, RIOMap *
 		}
 		part1->map = map;
 		part1->itv = (RInterval){ UT64_MAX, 1 };
-		if (!r_vector_push (map_skyline, part1)) {
+		if (!r_pvector_push (map_skyline, part1)) {
 			free (part1);
 		}
 	}
-	if (!r_vector_push (map_skyline, part)) {
+	if (!r_pvector_push (map_skyline, part)) {
 		free (part);
 		return false;
 	}
@@ -61,21 +61,24 @@ static bool _map_skyline_push(RVector *map_skyline, ut64 from, ut64 to, RIOMap *
 }
 
 // Store map parts that are not covered by others into io->map_skyline
-R_API void r_io_map_calculate_skyline(RIO *io) {
+void io_map_calculate_skyline(RIO *io) {
 	SdbListIter *iter;
 	RIOMap *map;
-	RVector events = {0};
+	RPVector events;
 	RBinHeap heap;
 	struct map_event_t *ev;
 	bool *deleted = NULL;
-	r_vector_clear (&io->map_skyline, free);
-	if (!r_vector_reserve (&events, ls_length (io->maps) * 2) ||
+	r_pvector_clear (&io->map_skyline);
+	r_pvector_init (&events, free);
+	if (!r_pvector_reserve (&events, ls_length (io->maps) * 2) ||
 			!(deleted = calloc (ls_length (io->maps), 1))) {
 		goto out;
 	}
 
 	int i = 0;
-	ls_foreach (io->maps, iter, map) {
+	// Last map has highest priority (it shadows previous maps),
+	// we assign 0 to its event id.
+	ls_foreach_prev (io->maps, iter, map) {
 		if (!(ev = R_NEW (struct map_event_t))) {
 			goto out;
 		}
@@ -83,7 +86,7 @@ R_API void r_io_map_calculate_skyline(RIO *io) {
 		ev->addr = map->itv.addr;
 		ev->is_to = false;
 		ev->id = i;
-		r_vector_push (&events, ev);
+		r_pvector_push (&events, ev);
 		if (!(ev = R_NEW (struct map_event_t))) {
 			goto out;
 		}
@@ -91,16 +94,18 @@ R_API void r_io_map_calculate_skyline(RIO *io) {
 		ev->addr = r_itv_end (map->itv);
 		ev->is_to = true;
 		ev->id = i;
-		r_vector_push (&events, ev);
+		r_pvector_push (&events, ev);
 		i++;
 	}
-	r_vector_sort (&events, _cmp_map_event);
+	r_pvector_sort (&events, _cmp_map_event);
 
+	// A min heap whose elements represents active events.
+	// The element with the smallest id is at the top.
 	r_binheap_init (&heap, _cmp_map_event_by_id);
 	ut64 last;
 	RIOMap *last_map = NULL;
-	for (i = 0; i < events.len; i++) {
-		ev = events.a[i];
+	for (i = 0; i < r_pvector_len (&events); i++) {
+		ev = r_pvector_at (&events, i);
 		if (ev->is_to) {
 			deleted[ev->id] = true;
 		} else {
@@ -134,13 +139,13 @@ R_API void r_io_map_calculate_skyline(RIO *io) {
 		}
 	}
 
-	r_binheap_clear (&heap, NULL);
+	r_binheap_clear (&heap);
 out:
-	r_vector_clear (&events, free);
+	r_pvector_clear (&events);
 	free (deleted);
 }
 
-R_API RIOMap* r_io_map_new(RIO* io, int fd, int flags, ut64 delta, ut64 addr, ut64 size, bool do_skyline) {
+RIOMap* io_map_new(RIO* io, int fd, int perm, ut64 delta, ut64 addr, ut64 size, bool do_skyline) {
 	if (!size || !io || !io->maps || !io->map_ids) {
 		return NULL;
 	}
@@ -152,19 +157,24 @@ R_API RIOMap* r_io_map_new(RIO* io, int fd, int flags, ut64 delta, ut64 addr, ut
 	map->fd = fd;
 	map->delta = delta;
 	if ((UT64_MAX - size + 1) < addr) {
-		r_io_map_new (io, fd, flags, delta - addr, 0LL, size + addr, do_skyline);
+		/// XXX: this is leaking a map!!!
+		io_map_new (io, fd, perm, delta - addr, 0LL, size + addr, do_skyline);
 		size = -(st64)addr;
 	}
 	// RIOMap describes an interval of addresses (map->from; map->to)
 	map->itv = (RInterval){ addr, size };
-	map->flags = flags;
+	map->perm = perm;
 	map->delta = delta;
 	// new map lives on the top, being top the list's tail
 	ls_append (io->maps, map);
 	if (do_skyline) {
-		r_io_map_calculate_skyline (io);
+		io_map_calculate_skyline (io);
 	}
 	return map;
+}
+
+R_API RIOMap *r_io_map_new (RIO *io, int fd, int perm, ut64 delta, ut64 addr, ut64 size) {
+	return io_map_new (io, fd, perm, delta, addr, size, true);
 }
 
 R_API bool r_io_map_remap (RIO *io, ut32 id, ut64 addr) {
@@ -174,10 +184,10 @@ R_API bool r_io_map_remap (RIO *io, ut32 id, ut64 addr) {
 		map->itv.addr = addr;
 		if (UT64_MAX - size + 1 < addr) {
 			map->itv.size = -addr;
-			r_io_map_new (io, map->fd, map->flags, map->delta - addr, 0, size + addr, true);
+			r_io_map_new (io, map->fd, map->perm, map->delta - addr, 0, size + addr);
 			return true;
 		}
-		r_io_map_calculate_skyline (io);
+		io_map_calculate_skyline (io);
 		return true;
 	}
 	return false;
@@ -250,15 +260,19 @@ R_API RIOMap* r_io_map_resolve(RIO* io, ut32 id) {
 	return NULL;
 }
 
-R_API RIOMap* r_io_map_add(RIO* io, int fd, int flags, ut64 delta, ut64 addr, ut64 size, bool do_skyline) {
+RIOMap* io_map_add(RIO* io, int fd, int perm, ut64 delta, ut64 addr, ut64 size, bool do_skyline) {
 	//check if desc exists
 	RIODesc* desc = r_io_desc_get (io, fd);
 	if (desc) {
 		//a map cannot have higher permissions than the desc belonging to it
-		return r_io_map_new (io, fd, (flags & desc->flags) | (flags & R_IO_EXEC),
+		return io_map_new (io, fd, (perm & desc->perm) | (perm & R_PERM_X),
 				delta, addr, size, do_skyline);
 	}
 	return NULL;
+}
+
+R_API RIOMap *r_io_map_add(RIO *io, int fd, int perm, ut64 delta, ut64 addr, ut64 size) {
+	return io_map_add (io, fd, perm, delta, addr, size, true);
 }
 
 R_API RIOMap* r_io_map_get_paddr(RIO* io, ut64 paddr) {
@@ -293,7 +307,7 @@ R_API RIOMap* r_io_map_get(RIO* io, ut64 addr) {
 R_API void r_io_map_reset(RIO* io) {
 	r_io_map_fini (io);
 	r_io_map_init (io);
-	r_io_map_calculate_skyline (io);
+	io_map_calculate_skyline (io);
 }
 
 R_API bool r_io_map_del(RIO* io, ut32 id) {
@@ -304,7 +318,7 @@ R_API bool r_io_map_del(RIO* io, ut32 id) {
 			if (map->id == id) {
 				ls_delete (io->maps, iter);
 				r_id_pool_kick_id (io->map_ids, id);
-				r_io_map_calculate_skyline (io);
+				io_map_calculate_skyline (io);
 				return true;
 			}
 		}
@@ -331,7 +345,7 @@ R_API bool r_io_map_del_for_fd(RIO* io, int fd) {
 		}
 	}
 	if (ret) {
-		r_io_map_calculate_skyline (io);
+		io_map_calculate_skyline (io);
 	}
 	return ret;
 }
@@ -347,7 +361,24 @@ R_API bool r_io_map_priorize(RIO* io, ut32 id) {
 			if (map->id == id) {
 				ls_split_iter (io->maps, iter);
 				ls_append (io->maps, map);
-				r_io_map_calculate_skyline (io);
+				io_map_calculate_skyline (io);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+R_API bool r_io_map_depriorize(RIO* io, ut32 id) {
+	if (io) {
+		RIOMap* map;
+		SdbListIter* iter;
+		ls_foreach (io->maps, iter, map) {
+			// search for iter with the correct map
+			if (map->id == id) {
+				ls_split_iter (io->maps, iter);
+				ls_prepend (io->maps, map);
+				io_map_calculate_skyline (io);
 				return true;
 			}
 		}
@@ -378,7 +409,7 @@ R_API bool r_io_map_priorize_for_fd(RIO* io, int fd) {
 	ls_join (io->maps, list);
 	ls_free (list);
 	io->maps->free = _map_free;
-	r_io_map_calculate_skyline (io);
+	io_map_calculate_skyline (io);
 	return true;
 }
 
@@ -409,7 +440,7 @@ R_API void r_io_map_cleanup(RIO* io) {
 		}
 	}
 	if (del) {
-		r_io_map_calculate_skyline (io);
+		io_map_calculate_skyline (io);
 	}
 }
 
@@ -421,7 +452,7 @@ R_API void r_io_map_fini(RIO* io) {
 	io->maps = NULL;
 	r_id_pool_free (io->map_ids);
 	io->map_ids = NULL;
-	r_vector_clear (&io->map_skyline, free);
+	r_pvector_clear (&io->map_skyline);
 }
 
 R_API void r_io_map_set_name(RIOMap* map, const char* name) {
@@ -439,7 +470,7 @@ R_API void r_io_map_del_name(RIOMap* map) {
 }
 
 //TODO: Kill it with fire
-R_API RIOMap* r_io_map_add_next_available(RIO* io, int fd, int flags, ut64 delta, ut64 addr, ut64 size, ut64 load_align) {
+R_API RIOMap* r_io_map_add_next_available(RIO* io, int fd, int perm, ut64 delta, ut64 addr, ut64 size, ut64 load_align) {
 	RIOMap* map;
 	SdbListIter* iter;
 	ut64 next_addr = addr,
@@ -454,13 +485,30 @@ R_API RIOMap* r_io_map_add_next_available(RIO* io, int fd, int flags, ut64 delta
 
 		if (map->fd == fd && ((map->itv.addr <= next_addr && next_addr < to) ||
 						r_itv_contain (map->itv, end_addr))) {
-			//return r_io_map_add(io, fd, flags, delta, map->to, size);
 			next_addr = to + (load_align - (to % load_align)) % load_align;
-			return r_io_map_add_next_available (io, fd, flags, delta, next_addr, size, load_align);
+			return r_io_map_add_next_available (io, fd, perm, delta, next_addr, size, load_align);
 		}
 		break;
 	}
-	return r_io_map_new (io, fd, flags, delta, next_addr, size, true);
+	return r_io_map_new (io, fd, perm, delta, next_addr, size);
+}
+
+R_API ut64 r_io_map_next_address(RIO* io, ut64 addr) {
+	RIOMap* map;
+	SdbListIter* iter;
+	ut64 lowest = UT64_MAX;
+
+	ls_foreach (io->maps, iter, map) {
+		ut64 from = r_itv_begin (map->itv);
+		if (from > addr && addr < lowest) {
+			lowest = from;
+		}
+		ut64 to = r_itv_end (map->itv);
+		if (to > addr && to < lowest) {
+			lowest = to;
+		}
+	}
+	return lowest;
 }
 
 R_API RList* r_io_map_get_for_fd(RIO* io, int fd) {
@@ -486,10 +534,10 @@ R_API bool r_io_map_resize(RIO *io, ut32 id, ut64 newsize) {
 	ut64 addr = map->itv.addr;
 	if (UT64_MAX - newsize + 1 < addr) {
 		map->itv.size = -addr;
-		r_io_map_new (io, map->fd, map->flags, map->delta - addr, 0, newsize + addr, true);
+		r_io_map_new (io, map->fd, map->perm, map->delta - addr, 0, newsize + addr);
 		return true;
 	}
 	map->itv.size = newsize;
-	r_io_map_calculate_skyline (io);
+	io_map_calculate_skyline (io);
 	return true;
 }

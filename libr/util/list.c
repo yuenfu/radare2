@@ -6,11 +6,11 @@
 #define _R_LIST_C_
 #include "r_util.h"
 
-inline RListIter *r_list_iter_new () {
+inline RListIter *r_list_iter_new() {
 	return calloc (1, sizeof (RListIter));
 }
 
-void r_list_iter_free (RListIter *list) {
+void r_list_iter_free(RListIter *list) {
 	/* do nothing? */
 }
 
@@ -300,7 +300,7 @@ R_API int r_list_del_n(RList *list, int n) {
 	if (!list) {
 		return false;
 	}
-	for (it = list->head, i = 0; it && it->data; it = it->n, i++)
+	for (it = list->head, i = 0; it && it->data; it = it->n, i++) {
 		if (i == n) {
 			if (!it->p && !it->n) {
 				list->head = list->tail = NULL;
@@ -318,6 +318,7 @@ R_API int r_list_del_n(RList *list, int n) {
 			list->length--;
 			return true;
 		}
+	}
 	return false;
 }
 
@@ -371,7 +372,9 @@ R_API RList *r_list_clone(RList *list) {
 R_API RListIter *r_list_add_sorted(RList *list, void *data, RListComparator cmp) {
 	RListIter *it, *item = NULL;
 	if (list && data && cmp) {
-		for (it = list->head; it && it->data && cmp (data, it->data) > 0; it = it->n) ;
+		for (it = list->head; it && it->data && cmp (data, it->data) > 0; it = it->n) {
+			;
+		}
 		if (it) {
 			item = R_NEW0 (RListIter);
 			if (!item) {
@@ -557,16 +560,19 @@ R_API void r_list_sort(RList *list, RListComparator cmp) {
 }
 
 R_API RList *r_list_uniq(const RList *list, RListComparator cmp) {
+	RListIter *iter, *iter2;
+	void *item, *item2;
 	if (!list || !cmp) {
 		return NULL;
 	}
 	RList *nl = r_list_newf (NULL);
-	RListIter *iter, *iter2;
-	void *item, *item2;
+	if (!nl) {
+		return NULL;
+	}
 	r_list_foreach (list, iter, item) {
 		bool found = false;
 		r_list_foreach (nl, iter2, item2) {
-			if (cmp (item, item2)) {
+			if (cmp (item, item2) == 0) {
 				found = true;
 				break;
 			}
@@ -594,11 +600,11 @@ int main () {
 
 	{
 		char *str;
-		r_list_foreach(l, iter, str) {
+		r_list_foreach (l, iter, str) {
 			printf("-- %s\n", str);
 		}
 		printf("--**--\n");
-		r_list_foreach_prev(l, iter, str) {
+		r_list_foreach_prev (l, iter, str) {
 			printf("-- %s\n", str);
 		}
 	}

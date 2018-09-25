@@ -16,16 +16,17 @@ GIT?=git
 WGET?=wget
 
 ifeq ($(CS_RELEASE),1)
-CS_VER=3.0.4
+CS_VER=3.0.5
 CS_TAR=https://codeload.github.com/aquynh/capstone/tar.gz/$(CS_VER)
 #CS_TAR=http://capstone-engine.org/download/$(CS_VER)/capstone-$(CS_VER).tgz
 CS_PATCHES=0
 else
 CS_TAR=
 CS_URL=$(GIT_PREFIX)github.com/aquynh/capstone.git
-CS_UPD=20180603
-CS_BRA=next
-CS_TIP=c5dce55db4907f8f3bd326fd96d0b6a613b18e66
+CS_UPD=20180916
+# NOTE: when you update CS_TIP or CS_BRA, also update them in shlr/meson.build
+CS_BRA=master
+CS_TIP=e2c1cd46c06744beaceff42dd882de3a90f0a37c
 # REVERT THIS COMMIT BECAUSE ITS WRONG
 CS_REV=
 CS_PATCHES=1
@@ -93,7 +94,6 @@ SDB_TARGETS+=sdb/sdb${BUILD_EXT_EXE}
 endif
 endif
 
-
 targets:
 	for TARGET in ${SDB_TARGETS} ; do ${MAKE} $$TARGET ; done
 
@@ -133,7 +133,7 @@ endif
 	cp -f sdb/src/.sdb${BUILD_EXT_EXE} $@
 
 .PHONY: sdb-sync sync-sdb sdbclean
-F=README.md config.mk src Makefile Jamroot meson.build msvc
+F=README.md config.mk src Makefile meson.build msvc
 SYNCFILES=$(addprefix sdb.vc/,${F})
 I=../libr/include
 
@@ -261,7 +261,7 @@ endif
 capstone-build: capstone
 	cd capstone && CFLAGS="-Dmips=mips ${CAPSTONE_CFLAGS} $(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 		$(MAKE) $(CAPSTONE_MAKEFLAGS) CC="$(CC)" AR_EXT=a IS_CYGWIN=0 CAPSTONE_STATIC=yes CAPSTONE_SHARED=no \
-		RANLIB="$(RANLIB)" AR="$(AR)" IS_MINGW=0 libcapstone.a
+		RANLIB="$(RANLIB)" LIBARCHS="" AR="$(AR)" IS_MINGW=0 libcapstone.a
 ifneq (${EXT_AR},a)
 	-cp -f capstone/libcapstone.a capstone/libcapstone.${EXT_AR}
 endif

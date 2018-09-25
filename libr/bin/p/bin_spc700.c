@@ -61,7 +61,7 @@ static RList* sections(RBinFile *bf) {
 	ptr->size = RAM_SIZE;
 	ptr->vaddr = 0x0;
 	ptr->vsize = RAM_SIZE;
-	ptr->srwx = R_BIN_SCN_READABLE;
+	ptr->perm = R_PERM_R;
 	ptr->add = true;
 	r_list_append (ret, ptr);
 	return ret;
@@ -94,7 +94,7 @@ RBinPlugin r_bin_plugin_spc700 = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_spc700,
 	.version = R2_VERSION

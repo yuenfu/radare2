@@ -1,5 +1,4 @@
 files = [
-  'iobuf.c',
   'cache.c',
   'desc.c',
   'fd.c',
@@ -56,27 +55,26 @@ if host_machine.system() == 'windows'
 endif
 
 r_io = library('r_io', files,
-  include_directories: [
-    platform_inc,
-    include_directories(
-      '../../shlr/bochs/include',
-      '../../shlr/gdb/include',
-      '../../shlr/qnx/include',
-      '../../shlr/windbg',
-      '../../shlr/ar',
-      '../../shlr/zip/include'
-    )
+  include_directories: platform_inc,
+  dependencies: [
+    r_util_dep,
+    r_socket_dep,
+    sdb_dep,
+    bochs_dep,
+    gdb_dep,
+    windbg_dep,
+    qnx_dep,
+    zip_dep,
+    ar_dep
   ],
-  link_with: [
-    r_util,
-    r_socket,
-    libr_shlr
-  ],
-  c_args: ['-DCORELIB=1'],
+  c_args: library_cflags,
   install: true,
   implicit_include_directories: false,
   soversion: r2_libversion
 )
+
+r_io_dep = declare_dependency(link_with: r_io,
+                              include_directories: platform_inc)
 
 pkgconfig_mod.generate(
   libraries: [r_io],

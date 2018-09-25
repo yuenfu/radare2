@@ -17,10 +17,13 @@ R_API RDebugInfo *r_debug_info(RDebug *dbg, const char *arg) {
 	if (!dbg || !dbg->h || !dbg->h->info) {
 		return NULL;
 	}
+	if (dbg->pid < 0) {
+		return NULL;
+	}
 	return dbg->h->info (dbg, arg);
 }
 
-R_API void r_debug_info_free (RDebugInfo *rdi) {
+R_API void r_debug_info_free(RDebugInfo *rdi) {
 	if (rdi) {
 		free (rdi->cwd);
 		free (rdi->exe);
@@ -28,6 +31,17 @@ R_API void r_debug_info_free (RDebugInfo *rdi) {
 		free (rdi->libname);
 		free (rdi->usr);
 		free (rdi);
+	}
+}
+
+R_API void r_debug_bp_update(RDebug *dbg) {
+	/* update all bp->addr if they are named bps */
+	RBreakpointItem *bp;
+	RListIter *iter;
+	r_list_foreach (dbg->bp->bps, iter, bp) {
+		if (bp->expr) {
+			bp->addr = dbg->corebind.numGet (dbg->corebind.core, bp->expr);
+		}
 	}
 }
 
@@ -60,6 +74,7 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc, RBreakpointItem
 	 * this is necessary because while stopped we don't want any breakpoints in
 	 * the code messing up our analysis.
 	 */
+	r_debug_bp_update (dbg);
 	if (!r_bp_restore (dbg->bp, false)) { // unset sw breakpoints
 		return false;
 	}
@@ -81,6 +96,40 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc, RBreakpointItem
 # else
 	int pc_off = dbg->bpsize;
 	/* see if we really have a breakpoint here... */
+	if (!dbg->pc_at_bp_set) {
+		b = r_bp_get_at (dbg->bp, pc - dbg->bpsize);
+		if (!b) { /* we don't. nothing left to do */
+			/* Some targets set pc to breakpoint */
+			b = r_bp_get_at (dbg->bp, pc);
+			if (!b) {
+				/* Couldn't find the break point. Nothing more to do... */
+				return true;
+			}
+			else {
+				dbg->pc_at_bp_set = true;
+				dbg->pc_at_bp = true;
+			}
+		} else {
+			dbg->pc_at_bp_set = true;
+			dbg->pc_at_bp = false;
+		}
+	}
+
+	if (!dbg->pc_at_bp_set) {
+		eprintf ("failed to determine position of pc after breakpoint");
+	}
+
+	if (dbg->pc_at_bp) {
+		pc_off = 0;
+		b = r_bp_get_at (dbg->bp, pc);
+	} else {
+		b = r_bp_get_at (dbg->bp, pc - dbg->bpsize);
+	}
+
+	if (!b) {
+		return true;
+	}
+
 	b = r_bp_get_at (dbg->bp, pc - dbg->bpsize);
 	if (!b) { /* we don't. nothing left to do */
 		/* Some targets set pc to breakpoint */
@@ -137,9 +186,9 @@ static int r_debug_bp_hit(RDebug *dbg, RRegItem *pc_ri, ut64 pc, RBreakpointItem
 static int r_debug_bps_enable(RDebug *dbg) {
 	/* restore all sw breakpoints. we are about to step/continue so these need
 	 * to be in place. */
-	if (!r_bp_restore (dbg->bp, true))
+	if (!r_bp_restore (dbg->bp, true)) {
 		return false;
-
+	}
 	/* done recoiling... */
 	dbg->recoil_mode = R_DBG_RECOIL_NONE;
 	return true;
@@ -209,7 +258,6 @@ R_API RBreakpointItem *r_debug_bp_add(RDebug *dbg, ut64 addr, int hw, bool watch
 	const char *module_name = module;
 	RListIter *iter;
 	RDebugMap *map;
-
 	if (!addr && module) {
 		bool detect_module, valid = false;
 		int perm;
@@ -228,7 +276,9 @@ R_API RBreakpointItem *r_debug_bp_add(RDebug *dbg, ut64 addr, int hw, bool watch
 		} else {
 			//module holds the address
 			addr = (ut64)r_num_math (dbg->num, module);
-			if (!addr) return NULL;
+			if (!addr) {
+				return NULL;
+			}
 			detect_module = true;
 		}
 		r_debug_map_sync (dbg);
@@ -336,13 +386,13 @@ R_API RDebug *r_debug_new(int hard) {
 	return dbg;
 }
 
-static int free_tracenodes_entry (RDebug *dbg, const char *k, const char *v) {
+static int free_tracenodes_entry(RDebug *dbg, const char *k, const char *v) {
 	ut64 v_num = r_num_get (NULL, v);
 	free((void *)(size_t)v_num);
 	return true;
 }
 
-R_API void r_debug_tracenodes_reset (RDebug *dbg) {
+R_API void r_debug_tracenodes_reset(RDebug *dbg) {
 	sdb_foreach (dbg->tracenodes, (SdbForeachCallback)free_tracenodes_entry, dbg);
 	sdb_reset (dbg->tracenodes);
 }
@@ -495,7 +545,9 @@ R_API ut64 r_debug_execute(RDebug *dbg, const ut8 *buf, int len, int restore) {
 		free (backup);
 		free (orig);
 		eprintf ("ra0=0x%08"PFMT64x"\n", ra0);
-	} else eprintf ("r_debug_execute: Cannot get program counter\n");
+	} else {
+		eprintf ("r_debug_execute: Cannot get program counter\n");
+	}
 	return (ra0);
 }
 
@@ -537,8 +589,9 @@ R_API bool r_debug_select(RDebug *dbg, int pid, int tid) {
 		return false;
 	}
 
-	if (dbg->h && dbg->h->select && !dbg->h->select (pid, tid))
+	if (dbg->h && dbg->h->select && !dbg->h->select (pid, tid)) {
 		return false;
+	}
 
 	r_io_system (dbg->iob.io, sdb_fmt ("pid %d", pid));
 
@@ -643,6 +696,7 @@ R_API RDebugReasonType r_debug_wait(RDebug *dbg, RBreakpointItem **bp) {
 			/* get the program coounter */
 			pc_ri = r_reg_get (dbg->reg, dbg->reg->name[R_REG_NAME_PC], -1);
 			if (!pc_ri) { /* couldn't find PC?! */
+				eprintf ("Couldn't find PC!\n");
 				return R_DEBUG_REASON_ERROR;
 			}
 
@@ -876,14 +930,17 @@ R_API int r_debug_step_over(RDebug *dbg, int steps) {
 	}
 
 	if (dbg->h && dbg->h->step_over) {
-		for (; steps_taken < steps; steps_taken++)
-			if (!dbg->h->step_over (dbg))
+		for (; steps_taken < steps; steps_taken++) {
+			if (!dbg->h->step_over (dbg)) {
 				return steps_taken;
+			}
+		}
 		return steps_taken;
 	}
 
-	if (!dbg->anal || !dbg->reg)
+	if (!dbg->anal || !dbg->reg) {
 		return steps_taken;
+	}
 
 	// Initial refill
 	buf_pc = r_debug_reg_get (dbg, dbg->reg->name[R_REG_NAME_PC]);
@@ -1112,10 +1169,15 @@ repeat:
 			reason == R_DEBUG_REASON_EXIT_TID ) {
 			goto repeat;
 		}
-		if (reason == R_DEBUG_REASON_EXIT_PID) {
-			dbg->pid = -1;
-		}
 #endif
+		if (reason == R_DEBUG_REASON_EXIT_PID) {
+#if __WINDOWS__
+			dbg->pid = -1;
+#elif __linux__
+			r_debug_bp_update (dbg);
+			r_bp_restore (dbg->bp, false); // (vdf) there has got to be a better way
+#endif
+		}
 
 		/* if continuing killed the inferior, we won't be able to get
 		 * the registers.. */
@@ -1212,8 +1274,9 @@ R_API int r_debug_continue_until_optype(RDebug *dbg, int type, int over) {
 
 	// step first, we dont want to check current optype
 	for (;;) {
-		if (!r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false))
+		if (!r_debug_reg_sync (dbg, R_REG_TYPE_GPR, false)) {
 			break;
+		}
 
 		pc = r_debug_reg_get (dbg, dbg->reg->name[R_REG_NAME_PC]);
 		// Try to keep the buffer full
@@ -1226,8 +1289,9 @@ R_API int r_debug_continue_until_optype(RDebug *dbg, int type, int over) {
 			eprintf ("Decode error at %"PFMT64x"\n", pc);
 			return false;
 		}
-		if (op.type == type)
+		if (op.type == type) {
 			break;
+		}
 		// Step over and repeat
 		ret = over
 			? r_debug_step_over (dbg, 1)
@@ -1302,7 +1366,11 @@ R_API bool r_debug_continue_back(RDebug *dbg) {
 	}
 
 	/* Get previous state */
-	before = r_list_head (dbg->sessions)->data; //XXX: currently use first session.
+	RListIter *iter = r_list_head (dbg->sessions);
+	before = iter? iter->data: NULL; //XXX: currently use first session.
+	if (!iter || !before) {
+		return false;
+	}
 
 	end_addr = r_debug_reg_get (dbg, dbg->reg->name[R_REG_NAME_PC]);
 	//eprintf ("before session (%d) 0x%08"PFMT64x"=> to 0x%08"PFMT64x"\n", before->key.id, before->key.addr, end_addr);
@@ -1408,8 +1476,9 @@ R_API int r_debug_continue_syscalls(RDebug *dbg, int *sc, int n_sc) {
 	for (;;) {
 		RDebugReasonType reason;
 
-		if (r_cons_singleton ()->breaked)
+		if (r_cons_singleton ()->context->breaked) {
 			break;
+		}
 #if __linux__
 		// step is needed to avoid dupped contsc results
 		/* XXX(jjd): actually one stop is before the syscall, the other is
@@ -1434,6 +1503,11 @@ R_API int r_debug_continue_syscalls(RDebug *dbg, int *sc, int n_sc) {
 			return -1;
 		}
 		reg = show_syscall (dbg, "SN");
+
+		if (dbg->corebind.core && dbg->corebind.syshit) {
+			dbg->corebind.syshit (dbg->corebind.core);
+		}
+
 		if (n_sc == -1) {
 			continue;
 		}
@@ -1499,7 +1573,7 @@ R_API int r_debug_child_clone(RDebug *dbg) {
 	return 0;
 }
 
-R_API bool r_debug_is_dead (RDebug *dbg) {
+R_API bool r_debug_is_dead(RDebug *dbg) {
 	if (!dbg->h) {
 		return false;
 	}
@@ -1558,10 +1632,13 @@ R_API ut64 r_debug_get_baddr(RDebug *dbg, const char *file) {
 	}
 	if (!strcmp (dbg->iob.io->desc->plugin->name, "gdb")) {		//this is very bad
 		// Tell gdb that we want baddr, not full mem map
-		dbg->iob.system(dbg->iob.io, "baddr");
+		dbg->iob.system (dbg->iob.io, "baddr");
 	}
 	int pid = r_io_desc_get_pid (dbg->iob.io->desc);
 	int tid = r_io_desc_get_tid (dbg->iob.io->desc);
+	if (pid < 0 || tid < 0) {
+		return 0LL;
+	}
 	if (r_debug_attach (dbg, pid) == -1) {
 		return 0LL;
 	}

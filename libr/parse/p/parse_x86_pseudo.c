@@ -181,21 +181,29 @@ static int parse (RParse *p, const char *data, char *str) {
 			ptr = end;
 		}
 		*ptr = '\0';
-		if (ptr != end) for (++ptr; *ptr == ' '; ptr++);
+		if (ptr != end) {
+			for (++ptr; *ptr == ' '; ptr++) {
+				;
+			}
+		}
 		r_str_ncpy (w0, buf, sizeof (w0));
 		r_str_ncpy (w1, ptr, sizeof (w1));
 		optr = ptr;
 		ptr = strchr (ptr, ',');
 		if (ptr) {
 			*ptr = '\0';
-			for (++ptr; *ptr == ' '; ptr++);
+			for (++ptr; *ptr == ' '; ptr++) {
+				;
+			}
 			r_str_ncpy (w1, optr, sizeof (w1));
 			r_str_ncpy (w2, ptr, sizeof (w2));
 			optr = ptr;
 			ptr = strchr (ptr, ',');
 			if (ptr) {
 				*ptr = '\0';
-				for (++ptr; *ptr == ' '; ptr++);
+				for (++ptr; *ptr == ' '; ptr++) {
+					;
+				}
 				r_str_ncpy (w2, optr, sizeof (w2));
 				r_str_ncpy (w3, ptr, sizeof (w3));
 			}
@@ -244,7 +252,7 @@ static int parse (RParse *p, const char *data, char *str) {
 			r_str_ncpy (wa[3], wa[2], sizeof (w3));
 			r_str_ncpy (wa[2], wa[1], sizeof (w2));
 		}
-		
+
 		replace (nw, wa, str);
 
 	} else if ((strstr (w1, "ax") || strstr (w1, "ah") || strstr (w1, "al")) && !p->retleave_asm) {
@@ -325,9 +333,9 @@ static inline void mk_reg_str(const char *regname, int delta, bool sign, bool at
 }
 
 static bool varsub (RParse *p, RAnalFunction *f, ut64 addr, int oplen, char *data, char *str, int len) {
-	RList *regs, *bpargs, *spargs;
-	RAnalVar *reg, *bparg, *sparg;
-	RListIter *regiter, *bpargiter, *spiter;
+	RList *bpargs, *spargs;
+	RAnalVar *bparg, *sparg;
+	RListIter *bpargiter, *spiter;
 	char oldstr[64], newstr[64];
 	char *tstr = strdup (data);
 	if (!tstr) {
@@ -390,7 +398,6 @@ static bool varsub (RParse *p, RAnalFunction *f, ut64 addr, int oplen, char *dat
                 free (tstr);
 		return false;
         }
-	regs = p->varlist (p->anal, f, 'r');
 	bpargs = p->varlist (p->anal, f, 'b');
 	spargs = p->varlist (p->anal, f, 's');
 	/*iterate over stack pointer arguments/variables*/
@@ -482,13 +489,6 @@ static bool varsub (RParse *p, RAnalFunction *f, ut64 addr, int oplen, char *dat
 		bp[0] = 0;
 	}
 
-	r_list_foreach (regs, regiter, reg) {
-		RRegItem *r = r_reg_index_get (p->anal->reg, reg->delta);
-		if (r && r->name && strstr (tstr, r->name)){
-			tstr = r_str_replace (tstr, r->name, reg->name, 1);
-		}
-	}
-
 	bool ret = true;
 	if (len > strlen (tstr)) {
 		strncpy (str, tstr, strlen (tstr));
@@ -500,7 +500,6 @@ static bool varsub (RParse *p, RAnalFunction *f, ut64 addr, int oplen, char *dat
 	free (tstr);
 	r_list_free (spargs);
 	r_list_free (bpargs);
-	r_list_free (regs);
 	return ret;
 }
 
@@ -512,7 +511,7 @@ RParsePlugin r_parse_plugin_x86_pseudo = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_PARSE,
 	.data = &r_parse_plugin_x86_pseudo,
 	.version = R2_VERSION

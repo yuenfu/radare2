@@ -358,13 +358,13 @@ typedef struct {
 	char *rcPath;
 } ProjectState;
 
-static int projectLoadBackground(RThread *th) {
+static RThreadFunctionRet projectLoadBackground(RThread *th) {
 	ProjectState *ps = th->user;
 	r_core_project_load (ps->core, ps->prjName, ps->rcPath);
 	free (ps->prjName);
 	free (ps->rcPath);
 	free (ps);
-	return 0;
+	return R_TH_STOP;
 }
 
 R_API RThread *r_core_project_load_bg(RCore *core, const char *prjName, const char *rcPath) {
@@ -535,11 +535,11 @@ static bool store_files_and_maps (RCore *core, RIODesc *desc, ut32 id) {
 	RListIter *iter;
 	RIOMap *map;
 	if (desc) {
-		r_cons_printf ("ofs %s %s\n", desc->uri, r_str_rwx_i (desc->flags));
+		r_cons_printf ("ofs %s %s\n", desc->uri, r_str_rwx_i (desc->perm));
 		if ((maps = r_io_map_get_for_fd (core->io, id))) {
 			r_list_foreach (maps, iter, map) {
 				r_cons_printf ("om %d 0x%"PFMT64x" 0x%"PFMT64x" 0x%"PFMT64x" %s%s%s\n", fdc,
-					map->itv.addr, map->itv.size, map->delta, r_str_rwx_i(map->flags),
+					map->itv.addr, map->itv.size, map->delta, r_str_rwx_i (map->perm),
 					map->name ? " " : "", map->name ? map->name : "");
 			}
 			r_list_free (maps);

@@ -1,4 +1,4 @@
-/* radare - LGPL - Copyright 2011-2017 - pancake */
+/* radare - LGPL - Copyright 2011-2018 - pancake */
 
 #include <r_egg.h>
 #include <r_bin.h>
@@ -15,38 +15,39 @@ static int usage(int v) {
 	printf ("Usage: ragg2 [-FOLsrxhvz] [-a arch] [-b bits] [-k os] [-o file] [-I path]\n"
 		"             [-i sc] [-e enc] [-B hex] [-c k=v] [-C file] [-p pad] [-q off]\n"
 		"             [-q off] [-dDw off:hex] file|f.asm|-\n");
-	if (v) printf (
-	" -a [arch]       select architecture (x86, mips, arm)\n"
-	" -b [bits]       register size (32, 64, ..)\n"
-	" -B [hexpairs]   append some hexpair bytes\n"
-	" -c [k=v]        set configuration options\n"
-	" -C [file]       append contents of file\n"
-	" -d [off:dword]  patch dword (4 bytes) at given offset\n"
-	" -D [off:qword]  patch qword (8 bytes) at given offset\n"
-	" -e [encoder]    use specific encoder. see -L\n"
-	" -f [format]     output format (raw, c, pe, elf, mach0, python, javascript)\n"
-	" -F              output native format (osx=mach0, linux=elf, ..)\n"
-	" -h              show this help\n"
-	" -i [shellcode]  include shellcode plugin, uses options. see -L\n"
-	" -I [path]       add include path\n"
-	" -k [os]         operating system's kernel (linux,bsd,osx,w32)\n"
-	" -L              list all plugins (shellcodes and encoders)\n"
-	" -n [dword]      append 32bit number (4 bytes)\n"
-	" -N [dword]      append 64bit number (8 bytes)\n"
-	" -o [file]       output file\n"
-	" -O              use default output file (filename without extension or a.out)\n"
-	" -p [padding]    add padding after compilation (padding=n10s32)\n"
-	"                 ntas : begin nop, trap, 'a', sequence\n"
-	"                 NTAS : same as above, but at the end\n"
-	" -P [size]       prepend debruijn pattern\n"
-	" -q [fragment]   debruijn pattern offset\n"
-	" -r              show raw bytes instead of hexpairs\n"
-	" -s              show assembler\n"
-	" -v              show version\n"
-	" -w [off:hex]    patch hexpairs at given offset\n"
-	" -x              execute\n"
-	" -z              output in C string syntax\n"
-	);
+	if (v) {
+		printf (
+			" -a [arch]       select architecture (x86, mips, arm)\n"
+			" -b [bits]       register size (32, 64, ..)\n"
+			" -B [hexpairs]   append some hexpair bytes\n"
+			" -c [k=v]        set configuration options\n"
+			" -C [file]       append contents of file\n"
+			" -d [off:dword]  patch dword (4 bytes) at given offset\n"
+			" -D [off:qword]  patch qword (8 bytes) at given offset\n"
+			" -e [encoder]    use specific encoder. see -L\n"
+			" -f [format]     output format (raw, c, pe, elf, mach0, python, javascript)\n"
+			" -F              output native format (osx=mach0, linux=elf, ..)\n"
+			" -h              show this help\n"
+			" -i [shellcode]  include shellcode plugin, uses options. see -L\n"
+			" -I [path]       add include path\n"
+			" -k [os]         operating system's kernel (linux,bsd,osx,w32)\n"
+			" -L              list all plugins (shellcodes and encoders)\n"
+			" -n [dword]      append 32bit number (4 bytes)\n"
+			" -N [dword]      append 64bit number (8 bytes)\n"
+			" -o [file]       output file\n"
+			" -O              use default output file (filename without extension or a.out)\n"
+			" -p [padding]    add padding after compilation (padding=n10s32)\n"
+			"                 ntas : begin nop, trap, 'a', sequence\n"
+			"                 NTAS : same as above, but at the end\n"
+			" -P [size]       prepend debruijn pattern\n"
+			" -q [fragment]   debruijn pattern offset\n"
+			" -r              show raw bytes instead of hexpairs\n"
+			" -s              show assembler\n"
+			" -v              show version\n"
+			" -w [off:hex]    patch hexpairs at given offset\n"
+			" -x              execute\n"
+			" -z              output in C string syntax\n");
+	}
 	return 1;
 }
 
@@ -96,7 +97,9 @@ static int openfile(const char *f, int x) {
 		}
 	}
 #if __UNIX__
-	if (x) fchmod (fd, 0755);
+	if (x) {
+		fchmod (fd, 0755);
+	}
 #endif
 #if _MSC_VER
 	_chsize (fd, 0);
@@ -157,7 +160,7 @@ int main(int argc, char **argv) {
 		case 'C':
 			contents = optarg;
 			break;
-		case 'w': 
+		case 'w':
 			{
 			char *arg = strdup (optarg);
 			char *p = strchr (arg, ':');
@@ -180,14 +183,14 @@ int main(int argc, char **argv) {
 			free (arg);
 			}
 			break;
-		case 'n': 
+		case 'n':
 			{
 			ut32 n = r_num_math (NULL, optarg);
 			append = 1;
 			r_egg_patch (egg, -1, (const ut8*)&n, 4);
 			}
 			break;
-		case 'N': 
+		case 'N':
 			{
 			ut64 n = r_num_math (NULL, optarg);
 			r_egg_patch (egg, -1, (const ut8*)&n, 8);
@@ -465,7 +468,7 @@ int main(int argc, char **argv) {
 
 	// add padding
 	if (padding) {
-		r_egg_padding (egg, padding); 
+		r_egg_padding (egg, padding);
 	}
 
 	// add pattern
@@ -484,7 +487,7 @@ int main(int argc, char **argv) {
 	r_egg_finalize (egg);
 
 	if (show_asm) {
-		printf ("%s\n", r_egg_get_assembly (egg));	
+		printf ("%s\n", r_egg_get_assembly (egg));
 	}
 
 	if (show_raw || show_hex || show_execute) {

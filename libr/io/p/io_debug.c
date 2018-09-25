@@ -217,6 +217,9 @@ static void trace_me () {
 	if (ptrace (PT_TRACE_ME, 0, 0, 0) != 0) {
 		r_sys_perror ("ptrace-traceme");
 	}
+#if __APPLE__
+	ptrace (PT_SIGEXC, getpid(), NULL, 0);
+#endif
 #else
 	if (ptrace (PTRACE_TRACEME, 0, NULL, NULL) != 0) {
 		r_sys_perror ("ptrace-traceme");
@@ -529,7 +532,9 @@ static int fork_and_ptraceme(RIO *io, int bits, const char *cmd) {
 		/* XXX: clean this dirty code */
 		do {
 			ret = wait (&status);
-			if (ret == -1) return -1;
+			if (ret == -1) {
+				return -1;
+			}
 			if (ret != child_pid) {
 				eprintf ("Wait event received by "
 					"different pid %d\n", ret);
@@ -691,7 +696,7 @@ RIOPlugin r_io_plugin_debug = {
 #endif
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_IO,
 	.data = &r_io_plugin_debug,
 	.version = R2_VERSION

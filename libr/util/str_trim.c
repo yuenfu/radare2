@@ -57,17 +57,21 @@ R_API void r_str_trim_path(char *s) {
 }
 
 R_API char *r_str_trim(char *str) {
-	int len;
-	char *ptr;
-
 	if (!str) {
 		return NULL;
 	}
-	while (*str && IS_WHITECHAR (*str)) {
-		memmove (str, str + 1, strlen (str + 1) + 1);
+	char *nonwhite = str;
+	while (*nonwhite && IS_WHITECHAR (*nonwhite)) {
+		nonwhite++;
 	}
-	len = strlen (str);
+	int len = strlen (str);
+	if (str != nonwhite) {
+		int delta = (size_t)(nonwhite - str);
+		len -= delta;
+		memmove (str, nonwhite, len + 1);
+	}
 	if (len > 0) {
+		char *ptr;
 		for (ptr = str + len - 1; ptr != str; ptr--) {
 			if (!IS_WHITECHAR (*ptr)) {
 				break;
@@ -82,7 +86,20 @@ R_API char *r_str_trim(char *str) {
 // TODO: rename to r_str_trim_head_ro()
 R_API const char *r_str_trim_ro(const char *str) {
 	if (str) {
-		for (; *str && IS_WHITECHAR (*str); str++);
+		for (; *str && IS_WHITECHAR (*str); str++) {
+			;
+		}
+	}
+	return str;
+}
+
+// Returns a pointer to the first whitespace character of str.
+// TODO: rename to r_str_trim_head_wp()
+R_API const char *r_str_trim_wp(const char *str) {
+	if (str) {
+		for (; *str && !IS_WHITESPACE (*str); str++) {
+			;
+		}
 	}
 	return str;
 }
@@ -159,11 +176,10 @@ R_API int r_str_ansi_trim(char *str, int str_len, int n) {
 					i += 18;
 				}
 			} else if (ch2 == '[') {
-				for (++i; (i < str_len) && str[i]
-					&& str[i] != 'J'
-					&& str[i] != 'm'
-					&& str[i] != 'H';
-				     i++);
+				for (++i; (i < str_len) && str[i] && str[i] != 'J' && str[i] != 'm' && str[i] != 'H';
+					i++) {
+					;
+				}
 			}
 		} else if ((str[i] & 0xc0) != 0x80) {
 			len++;

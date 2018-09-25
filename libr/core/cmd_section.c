@@ -16,9 +16,7 @@ static const char *help_msg_S[] = {
 	"S-.","","remove section at core->offset (can be changed with @)",
 	"S=","","list sections (ascii-art bars) (io.va to display paddr or vaddr)",
 	"Sa","[-] [A] [B] [[off]]","Specify arch and bits for given section",
-	"Sd[a]"," [file]","dump current (all) section to a file (see dmd)",
 	"Sf"," [baddr]","Alias for S 0 0 $s $s foo rwx",
-	"Sj","","list sections in JSON (alias for iSj)",
 	"Sl"," [file]","load contents of file into current section (see dml)",
 	"Sr"," [name]","rename section on current seek",
 	"SR", "[?]", "Remap sections with different mode of operation", 
@@ -89,9 +87,9 @@ static void list_section_visual(RIO *io, ut64 seek, ut64 len, int use_color, int
 			r_num_units (buf, s->size);
 			if (use_color) {
 				color_end = Color_RESET;
-				if (s->flags & 1) { // exec bit
+				if (s->perm & R_PERM_X) { // exec bit
 					color = Color_GREEN;
-				} else if (s->flags & 2) { // write bit
+				} else if (s->perm & R_PERM_W) { // write bit
 					color = Color_RED;
 				} else {
 					color = "";
@@ -120,11 +118,11 @@ static void list_section_visual(RIO *io, ut64 seek, ut64 len, int use_color, int
 			if (io->va) {
 				io->cb_printf ("| %s0x%08"PFMT64x"%s %5s %s  %04s\n",
 						color, s->vaddr + s->vsize, color_end, buf,
-						r_str_rwx_i (s->flags), s->name);
+						r_str_rwx_i (s->perm), s->name);
 			} else {
 				io->cb_printf ("| %s0x%08"PFMT64x"%s %5s %s  %04s\n",
 						color, s->paddr+s->size, color_end, buf,
-						r_str_rwx_i (s->flags), s->name);
+						r_str_rwx_i (s->perm), s->name);
 			}
 
 			i++;
@@ -150,7 +148,7 @@ static void __section_list (RIO *io, ut64 offset, RPrint *print, int rad) {
 			print->cb_printf ("f section.%s %"PFMT64d" 0x%"PFMT64x"\n", n, s->size, s->vaddr);
 			print->cb_printf ("S 0x%08"PFMT64x" 0x%08"PFMT64x" 0x%08"
 				PFMT64x" 0x%08"PFMT64x" %s %s\n", s->paddr,
-				s->vaddr, s->size, s->vsize, n, r_str_rwx_i (s->flags));
+				s->vaddr, s->size, s->vsize, n, r_str_rwx_i (s->perm));
 			free (n);
 		}
 	} else {
@@ -171,7 +169,7 @@ static void __section_list (RIO *io, ut64 offset, RPrint *print, int rad) {
 			}
 			print->cb_printf ("pa=0x%08"PFMT64x" %s va=0x%08"PFMT64x
 				" sz=0x%04"PFMT64x" vsz=0x%04"PFMT64x" %s", s->paddr,
-				r_str_rwx_i (s->flags), s->vaddr, s->size, s->vsize, s->name);
+				r_str_rwx_i (s->perm), s->vaddr, s->size, s->vsize, s->name);
 			if (s->arch && s->bits) {
 				print->cb_printf ("  ; %s %d", r_sys_arch_str (s->arch),
 					s->bits);
@@ -179,73 +177,6 @@ static void __section_list (RIO *io, ut64 offset, RPrint *print, int rad) {
 			print->cb_printf ("\n");
 		}
 	}
-}
-
-static bool dumpSectionsToDisk(RCore *core) {
-	char file[512];
-	SdbListIter *iter;
-	RIOSection *s;
-
-	ls_foreach (core->io->sections, iter, s) {
-		ut8 *buf = malloc (s->size);
-		r_io_read_at (core->io, s->paddr, buf, s->size);
-		snprintf (file, sizeof (file),
-			"0x%08"PFMT64x"-0x%08"PFMT64x"-%s.dmp",
-			s->vaddr, s->vaddr+s->size,
-			r_str_rwx_i (s->flags));
-		if (!r_file_dump (file, buf, s->size, 0)) {
-			eprintf ("Cannot write '%s'\n", file);
-			free (buf);
-			return false;
-		}
-		eprintf ("Dumped %d byte(s) into %s\n", (int)s->size, file);
-		free (buf);
-	}
-	return true;
-}
-
-static bool dumpSectionToDisk(RCore *core, char *file) {
-	char *heapfile = NULL;
-	SdbListIter *iter;
-	RIOSection *s;
-	int len = 128;
-	if (!core || !file) {
-		return false;
-	}
-	ut64 o = core->offset;
-	if (core->io->va || core->io->debug) {
-		s = r_io_section_vget (core->io, o);
-		o = s ? o - s->vaddr + s->paddr : o;
-	}
-	ls_foreach (core->io->sections, iter, s) {
-		if (o >= s->paddr && o < s->paddr + s->size) {
-			ut8 *buf = malloc (s->size);
-			r_io_read_at (core->io, s->paddr, buf, s->size);
-			if (!file) {
-				heapfile = (char *)malloc (len);
-				if (!heapfile) {
-					free (buf);
-					return false;
-				}
-				file = heapfile;
-				snprintf (file, len,
-					"0x%08"PFMT64x"-0x%08"PFMT64x"-%s.dmp",
-					s->vaddr, s->vaddr + s->size,
-					r_str_rwx_i (s->flags));
-			}
-			if (!r_file_dump (file, buf, s->size, 0)) {
-				eprintf ("Cannot write '%s'\n", file);
-				free (buf);
-				free (heapfile);
-				return false;
-			}
-			eprintf ("Dumped %d byte(s) into %s\n", (int)s->size, file);
-			free (buf);
-			free (heapfile);
-			return true;
-		}
-	}
-	return false;
 }
 
 static void update_section_flag_at_with_oldname(RIOSection *s, RFlag *flags, ut64 off, char *oldname) {
@@ -347,9 +278,6 @@ static int cmd_section(void *data, const char *input) {
 			r_core_cmd0 (core, "S 0 0 $s $s foo rwx");
 		}
 		break;
-	case 'j': // "Sj"
-		r_core_cmd0 (core, "iSj");
-		break;
 	case 'a': // "Sa"
 		switch (input[1]) {
 		case '\0':
@@ -422,30 +350,6 @@ static int cmd_section(void *data, const char *input) {
 			}
 		} else {
 			r_core_cmd_help (core, help_msg_Sr);
-		}
-		break;
-	case 'd': // "Sd"
-		{
-		char *file = NULL;
-		int len = 128;
-		switch (input[1]) {
-		case 0:
-			(void) dumpSectionToDisk (core, NULL);
-			break;
-		case ' ': // "Sd "
-			if (input[2]) {
-				file = (char *)calloc (len, sizeof (char));
-				if (file) {
-					snprintf (file, len, "%s", input + 2);
-				}
-			}
-			(void) dumpSectionToDisk (core, file);
-			free (file);
-			break;
-		case 'a': // "Sda"
-			(void)dumpSectionsToDisk (core);
-			break;
-		}
 		}
 		break;
 	case 'l': // "Sl"

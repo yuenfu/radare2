@@ -3,6 +3,8 @@
 
 // defines like IS_DIGIT, etc'
 #include "r_util/r_str_util.h"
+#include "r_userconf.h"
+#include <stddef.h>
 
 // TODO: fix this to make it crosscompile-friendly: R_SYS_OSTYPE ?
 /* operating system */
@@ -10,6 +12,19 @@
 #undef __KFBSD__
 #undef __UNIX__
 #undef __WINDOWS__
+
+#define R_IN /* do not use, implicit */
+#define R_OWN /* pointer ownership is transferred */
+#define R_OUT /* parameter is written, not read */
+#define R_INOUT /* parameter is read and written */
+#define R_NONNULL /* nonnull */
+#define R_NULLABLE /* pointer can be null */
+#define R_IFNULL(x) /* default value for the pointer when null */
+#ifdef __GNUC__
+#define R_UNUSED __attribute__((__unused__))
+#else
+#define R_UNUSED /* unused */
+#endif
 
 #ifdef R_NEW
 #undef R_NEW
@@ -26,6 +41,19 @@
 #ifdef R_NEWCOPY
 #undef R_NEWCOPY
 #endif
+
+// used in debug, io, bin, anal, ...
+#define R_PERM_R	4
+#define R_PERM_W	2
+#define R_PERM_X	1
+#define R_PERM_RW	(R_PERM_R|R_PERM_W)
+#define R_PERM_RX	(R_PERM_R|R_PERM_X)
+#define R_PERM_RWX	(R_PERM_R|R_PERM_W|R_PERM_X)
+#define R_PERM_WX	(R_PERM_W|R_PERM_X)
+#define R_PERM_SHAR	8
+#define R_PERM_PRIV	16
+#define R_PERM_ACCESS	32
+#define R_PERM_CREAT	64
 
 // HACK to fix capstone-android-mips build
 #undef mips
@@ -88,6 +116,7 @@
 #endif
 
 #ifdef _MSC_VER
+  #define restrict
   #define strcasecmp stricmp
   #define strncasecmp strnicmp
   #define __WINDOWS__ 1
@@ -198,15 +227,7 @@ extern "C" {
 #define __packed __attribute__((__packed__))
 #endif
 
-#ifndef UNUSED
-#ifdef __GNUC__
-#define UNUSED __attribute__((__unused__))
-#else
-#define UNUSED
-#endif
-#endif
-
-typedef void (*PrintfCallback)(const char *str, ...);
+typedef int (*PrintfCallback)(const char *str, ...);
 
 // TODO NOT USED. DEPREACATE
 #if R_RTDEBUG
@@ -270,7 +291,7 @@ static inline void *r_new_copy(int size, void *data) {
 // TODO: Make R_NEW_COPY be 1 arg, not two
 #define R_NEW_COPY(x,y) x=(void*)malloc(sizeof(y));memcpy(x,y,sizeof(y))
 #define R_MEM_ALIGN(x) ((void *)(size_t)(((ut64)(size_t)x) & 0xfffffffffffff000LL))
-#define R_ARRAY_SIZE(x) (sizeof (x) / sizeof (x[0]))
+#define R_ARRAY_SIZE(x) (sizeof (x) / sizeof ((x)[0]))
 #define R_PTR_MOVE(d,s) d=s;s=NULL;
 
 #define R_PTR_ALIGN(v,t) \
@@ -329,7 +350,7 @@ static inline void *r_new_copy(int size, void *data) {
 #endif
 
 #undef r_offsetof
-#define r_offsetof(type, member) ((unsigned long) &((type*)0)->member)
+#define r_offsetof(type, member) offsetof(type, member)
 
 #define R_BETWEEN(x,y,z) (((y)>=(x)) && ((y)<=(z)))
 #define R_ROUND(x,y) ((x)%(y))?(x)+((y)-((x)%(y))):(x)

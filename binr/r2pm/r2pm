@@ -38,8 +38,8 @@ if [ -f ~/.r2pm.cache ]; then
 fi
 if [ "${R2PMCACHE_LOADED}" != 1 ]; then
 	export LIBEXT="`r2 -H LIBEXT`"
-	export R2CONFIGHOME="`r2 -H RCONFIGHOME`"
-	export R2DATAHOME="`r2 -H RDATAHOME`"
+	export R2CONFIGHOME="`r2 -H R2_RCONFIGHOME`"
+	export R2DATAHOME="`r2 -H R2_RDATAHOME`"
 	PREFIX="`r2 -H PREFIX`"
 fi
 BINDIR="${PREFIX}/bin/"
@@ -59,8 +59,10 @@ export R2PM_SYSBINDIR="${BINDIR}"
 export R2PM_BINDIR
 
 # plugdir
+export R2PM_SYSPLUGIN_DIR=$(r2 -H R2_LIBR_PLUGINS)
+export R2PM_USRPLUGIN_DIR=$(r2 -H R2_USER_PLUGINS)
+[ -z "${R2PM_PLUGDIR}" ] && R2PM_PLUGDIR="${R2PM_USRPLUGIN_DIR}"
 [ -z "${R2PM_PLUGDIR}" ] && R2PM_PLUGDIR="${R2DATAHOME}/plugins"
-export R2PM_PLUGDIR
 
 # www
 export R2PM_SYSWWWROOT="`r2 -qc 'e http.root' --`"
@@ -74,6 +76,8 @@ export LDFLAGS="-L${R2PM_HOMEPREFIX}/lib"
 
 export R2PM_PYPATH="${R2PM_PREFIX}/python"
 export R2PM_OLDPWD="${PWD}"
+
+export RHOMEDIR="`r2 -H RHOMEDIR`"
 
 if [ "`uname`" = Darwin ]; then
 	export LD_LIBRARY_PATH="${R2PM_HOMEPREFIX}/lib"
@@ -145,10 +149,11 @@ commitSuicide() {
 		exit 1
 	fi
 	countDown "Self destroying in" 3
-	confirm "> Delete ~/config.radare2" && (
-		rm -rf ~/.config/radare2
+	confirm "> Delete $RHOMEDIR" && (
+		rm -rf "$RHOMEDIR"
 	)
-	R2PATHS="${PREFIX} /usr /usr/local /opt/radare2 ~/config/radare2/prefix /"
+	R2PATHS="${PREFIX}:/usr:/usr/local:/opt/radare2:${RHOMEDIR}/prefix:/"
+	IFS=:
 	for a in $R2PATHS ; do
 		if [ -x "${a}/bin/radare2" ]; then
 			confirm "> Delete r2 from ${a}" && (
@@ -156,12 +161,14 @@ commitSuicide() {
 			)
 		fi
 	done
+	unset IFS
 }
 
 case "$1" in
 init|up|update)
 	[ -z "$R2PM_DBDIR" ] && R2PM_DBDIR="${R2PM_USRDIR}/db"
 	mkdir -p "${R2PM_GITDIR}"
+	mkdir -p "${HOME}/.config"
 	cd "${R2PM_GITDIR}"
 	if [ -d radare2-pm ]; then
 		cd radare2-pm
@@ -234,14 +241,23 @@ R2PM_List() {
 }
 
 R2PM_Search() {
+
+	#helper for pretty printing tabbed lists
+	if ! type "column" > /dev/null; then
+		cols() { cat ; }
+	else
+		cols() { column -s $'\t' -t; }
+	fi
+
 	for a in "${R2PM_DBDIR}" "${R2PM_USRDIR}"/db2/*/db ; do
 		[ -d "$a" ] || continue
 (
 		cd "${a}"
 		if [ -n "$1" ]; then
-			grep R2PM_DESC * /dev/null | sed -e "s,:R2PM_DESC,    `printf ' \t'`," -e 's,",,g' | grep -i "$1"
+			grep R2PM_DESC * /dev/null | sed -e "s,:R2PM_DESC,    `printf ' \t'`," -e 's,",,g' | \
+				grep -i "$1" | cols
 		else
-			grep R2PM_DESC * /dev/null | sed -e "s,:R2PM_DESC,    `printf ' \t'`," -e 's,",,g'
+			grep R2PM_DESC * /dev/null | sed -e "s,:R2PM_DESC,    `printf ' \t'`," -e 's,",,g' | cols
 		fi
 )
 	done
@@ -319,7 +335,7 @@ R2PM_SVN() {
 }
 
 R2PM_FAIL() {
-	echo "\033[31mERROR: \033[32m$@\033[0m"
+	printf "\033[31mERROR: \033[32m$@\033[0m\n"
 	exit 1
 }
 
@@ -488,7 +504,8 @@ case "$1" in
 -gi|global-install)
 	GLOBAL=1
 	R2PM_PREFIX="${R2PM_SYSPREFIX}"
-	R2PM_PLUGDIR="${R2PM_SYSPREFIX}/lib/radare2/${R2VERSION}/"
+	#R2PM_PLUGDIR="${R2PM_SYSPREFIX}/lib/radare2/${R2VERSION}/"
+	R2PM_PLUGDIR="${R2PM_SYSPLUGIN_DIR}"
 	R2PM_BINDIR="${R2PM_SYSBINDIR}"
 	R2PM_WWWROOT="${R2PM_SYSWWWROOT}"
 	#TODO set R2PM_ETCD= to a "global" radare2rc.d
@@ -500,7 +517,8 @@ case "$1" in
 -gu|global-uninstall)
 	GLOBAL=1
 	R2PM_PREFIX="${R2PM_SYSPREFIX}"
-	R2PM_PLUGDIR="${R2PM_SYSPREFIX}/lib/radare2/${R2VERSION}/"
+	#R2PM_PLUGDIR="${R2PM_SYSPREFIX}/lib/radare2/${R2VERSION}/"
+	R2PM_PLUGDIR="${R2PM_SYSPLUGIN_DIR}"
 	R2PM_BINDIR="${R2PM_SYSBINDIR}"
 	R2PM_WWWROOT="${R2PM_SYSWWWROOT}"
 	#TODO set R2PM_ETCD= to a "global" radare2rc.d
@@ -665,11 +683,10 @@ Commands:
  cache                       cache contents of r2 -H to make r2pm r2-independent
 Environment:
  SUDO=sudo                    use this tool as sudo
- R2PM_PLUGDIR=~/.local/share/radare2/plugins   # default value, home-install for plugins
- R2PM_BINDIR=~/.local/share/radare2/prefix/bin # bindir in r2's PATH
- R2PM_PLUGDIR=/usr/lib/radare2/last/           # for system-wide plugin installs
- R2PM_DBDIR=~/.local/share/radare2/r2pm/db     # location of the db
- R2PM_GITDIR=~/.local/share/radare2/r2pm/git   # cloned git repositories
+ R2PM_PLUGDIR=${R2PM_PLUGDIR}
+ R2PM_BINDIR=${R2PM_BINDIR}
+ R2PM_DBDIR=${R2PM_DBDIR}
+ R2PM_GITDIR=${R2PM_GITDIR}
 HELP
 	;;
 esac

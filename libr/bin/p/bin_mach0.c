@@ -1,4 +1,4 @@
-/* radare - LGPL - Copyright 2009-2017 - pancake */
+/* radare - LGPL - Copyright 2009-2018 - pancake */
 
 #include <r_types.h>
 #include <r_util.h>
@@ -38,6 +38,9 @@ static void * load_bytes(RBinFile *bf, const ut8 *buf, ut64 sz, ut64 loadaddr, S
 		return NULL;
 	}
 	RBuffer *tbuf = r_buf_new ();
+	if (!tbuf) {
+		return NULL;
+	}
 	r_buf_set_bytes (tbuf, buf, sz);
 	struct MACH0_(opts_t) opts;
 	MACH0_(opts_set_default) (&opts, bf);
@@ -134,7 +137,9 @@ static RList* sections(RBinFile *bf) {
 			const int sz = 8;
 #endif
 			int len = sections[i].size / sz;
-			ptr->format = r_str_newf ("Cd %d[%d]", sz, len);
+			if (len < bf->size) {
+				ptr->format = r_str_newf ("Cd %d[%d]", sz, len);
+			}
 		}
 		ptr->name[R_BIN_SIZEOF_STRINGS] = 0;
 		handle_data_sections (ptr);
@@ -144,21 +149,24 @@ static RList* sections(RBinFile *bf) {
 		ptr->vaddr = sections[i].addr;
 		ptr->add = true;
 		if (!ptr->vaddr) {
-			ptr->vaddr = ptr->paddr;
+			// XXX(lowlyw) this is a valid macho, but rarely will anything
+			// be mapped at va = 0
+			// eprintf ("mapping text to va = 0\n");
+			// ptr->vaddr = ptr->paddr;
 		}
-		ptr->srwx = sections[i].srwx;
+		ptr->perm = sections[i].perm;
 		r_list_append (ret, ptr);
 	}
 	free (sections);
 	return ret;
 }
 
-static RBinAddr* newEntry(ut64 haddr, ut64 paddr, int type, int bits) {
+static RBinAddr* newEntry(ut64 hpaddr, ut64 paddr, int type, int bits) {
 	RBinAddr *ptr = R_NEW0 (RBinAddr);
 	if (ptr) {
 		ptr->paddr = paddr;
 		ptr->vaddr = paddr;
-		ptr->haddr = haddr;
+		ptr->hpaddr = hpaddr;
 		ptr->bits = bits;
 		ptr->type = type;
 		//realign due to thumb
@@ -170,7 +178,7 @@ static RBinAddr* newEntry(ut64 haddr, ut64 paddr, int type, int bits) {
 	return ptr;
 }
 
-static void process_constructors (RBinFile *bf, RList *ret, int bits) {
+static void process_constructors(RBinFile *bf, RList *ret, int bits) {
 	RList *secs = sections (bf);
 	RListIter *iter;
 	RBinSection *sec;
@@ -187,7 +195,11 @@ static void process_constructors (RBinFile *bf, RList *ret, int bits) {
 			if (!buf) {
 				continue;
 			}
-			(void)r_buf_read_at (bf->buf, sec->paddr, buf, sec->size);
+			int read = r_buf_read_at (bf->buf, sec->paddr, buf, sec->size);
+			if (read < sec->size) {
+				eprintf ("process_constructors: cannot process section %s\n", sec->name);
+				continue;
+			}
 			if (bits == 32) {
 				for (i = 0; i < sec->size; i += 4) {
 					ut32 addr32 = r_read_le32 (buf + i);
@@ -224,7 +236,7 @@ static RList* entries(RBinFile *bf) {
 	if ((ptr = R_NEW0 (RBinAddr))) {
 		ptr->paddr = entry->offset + obj->boffset;
 		ptr->vaddr = entry->addr;
-		ptr->haddr = entry->haddr;
+		ptr->hpaddr = entry->haddr;
 		ptr->bits = bits;
 		//realign due to thumb
 		if (bits == 16) {
@@ -306,8 +318,8 @@ static RList* symbols(RBinFile *bf) {
 		}
 		ptr->forwarder = r_str_const ("NONE");
 		ptr->bind = r_str_const ((symbols[i].type == R_BIN_MACH0_SYMBOL_TYPE_LOCAL)?
-				"LOCAL": "GLOBAL");
-		ptr->type = r_str_const ("FUNC");
+				R_BIN_BIND_LOCAL_STR: R_BIN_BIND_GLOBAL_STR);
+		ptr->type = r_str_const (R_BIN_TYPE_FUNC_STR);
 		ptr->vaddr = symbols[i].addr;
 		ptr->paddr = symbols[i].offset + obj->boffset;
 		ptr->size = symbols[i].size;
@@ -340,9 +352,9 @@ static RList* symbols(RBinFile *bf) {
 			ptr->paddr = address;
 			ptr->size = 0;
 			ptr->name = r_str_newf ("func.%08"PFMT64x, ptr->vaddr);
-			ptr->type = "FUNC";
+			ptr->type = R_BIN_TYPE_FUNC_STR;
 			ptr->forwarder = "NONE";
-			ptr->bind = "LOCAL";
+			ptr->bind = R_BIN_BIND_LOCAL_STR;
 			ptr->ordinal = i++;
 			if (bin->hdr.cputype == CPU_TYPE_ARM && wordsize < 64) {
 				_handle_arm_thumb (bin, &ptr);
@@ -386,6 +398,8 @@ static RList* imports(RBinFile *bf) {
 		return ret;
 	}
 	bin->has_canary = false;
+	bin->has_retguard = -1;
+	bin->has_sanitizers = false;
 	for (i = 0; !imports[i].last; i++) {
 		if (!(ptr = R_NEW0 (RBinImport))) {
 			break;
@@ -414,6 +428,10 @@ static RList* imports(RBinFile *bf) {
 		}
 		if (!strcmp (name, "__stack_chk_fail") ) {
 			bin->has_canary = true;
+		}
+		if (!strcmp (name, "__asan_init") ||
+                   !strcmp (name, "__tsan_init")) {
+			bin->has_sanitizers = true;
 		}
 		r_list_append (ret, ptr);
 	}
@@ -488,21 +506,26 @@ static RBinInfo* info(RBinFile *bf) {
 	char *str;
 	RBinInfo *ret;
 
-	if (!bf || !bf->o)
+	if (!bf || !bf->o) {
 		return NULL;
+	}
 
 	ret = R_NEW0 (RBinInfo);
-	if (!ret)
+	if (!ret) {
 		return NULL;
+	}
 
 	bin = bf->o->bin_obj;
-	if (bf->file)
+	if (bf->file) {
 		ret->file = strdup (bf->file);
+	}
 	if ((str = MACH0_(get_class) (bf->o->bin_obj))) {
 		ret->bclass = str;
 	}
 	if (bin) {
 		ret->has_canary = bin->has_canary;
+		ret->has_retguard = -1;
+		ret->has_sanitizers = bin->has_sanitizers;
 		ret->dbg_info = bin->dbg_info;
 		ret->lang = bin->lang;
 	}
@@ -531,8 +554,9 @@ static RBinInfo* info(RBinFile *bf) {
 static bool check_bytes(const ut8 *buf, ut64 length) {
 	if (buf && length >= 4) {
 		if (!memcmp (buf, "\xce\xfa\xed\xfe", 4) ||
-			!memcmp (buf, "\xfe\xed\xfa\xce", 4))
+			!memcmp (buf, "\xfe\xed\xfa\xce", 4)) {
 			return true;
+		}
 	}
 	return false;
 }
@@ -570,10 +594,10 @@ static RBuffer* create(RBin* bin, const ut8 *code, int clen, const ut8 *data, in
 	}
 #endif
 
-#define B(x,y) r_buf_append_bytes(buf,(const ut8*)x,y)
+#define B(x,y) r_buf_append_bytes(buf,(const ut8*)(x),y)
 #define D(x) r_buf_append_ut32(buf,x)
 #define Z(x) r_buf_append_nbytes(buf,x)
-#define W(x,y,z) r_buf_write_at(buf,x,(const ut8*)y,z)
+#define W(x,y,z) r_buf_write_at(buf,x,(const ut8*)(y),z)
 #define WZ(x,y) p_tmp=buf->length;Z(x);W(p_tmp,y,strlen(y))
 
 	/* MACH0 HEADER */
@@ -876,7 +900,7 @@ RBinPlugin r_bin_plugin_mach0 = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_mach0,
 	.version = R2_VERSION

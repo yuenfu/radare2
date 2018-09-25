@@ -7,14 +7,21 @@
 
 #define DFLT_ROWS 16
 
-static void nullprinter(const char *a, ...) { }
-static void libc_printf(const char *format, ...) {
+#define IS_ALPHA(C) (((C) >= 'a' && (C) <= 'z') || ((C) >= 'A' && (C) <= 'Z'))
+
+static int nullprinter(const char *a, ...) {
+	return 0;
+}
+static int libc_printf(const char *format, ...) {
 	va_list ap;
 	va_start (ap, format);
 	vprintf (format, ap);
 	va_end (ap);
+
+	return 0;
 }
-static bool isInterrupted = false;
+
+static RPrintIsInterruptedCallback is_interrupted_cb = NULL;
 
 R_API void r_print_portionbar(RPrint *p, const ut64 *portions, int n_portions) {
 	const int use_color = p->flags & R_PRINT_FLAGS_COLOR;
@@ -108,12 +115,15 @@ R_API int r_util_lines_getline(ut64 *lines_cache, int lines_cache_sz, ut64 off) 
 	return imin;
 }
 
-R_API int r_print_is_interrupted() {
-	return isInterrupted;
+R_API bool r_print_is_interrupted() {
+	if (is_interrupted_cb) {
+		return is_interrupted_cb ();
+	}
+	return false;
 }
 
-R_API void r_print_set_interrupted(int i) {
-	isInterrupted = i;
+R_API void r_print_set_is_interrupted_cb(RPrintIsInterruptedCallback cb) {
+	is_interrupted_cb = cb;
 }
 
 R_API bool r_print_mute(RPrint *p, int x) {
@@ -468,7 +478,7 @@ R_API char* r_print_hexpair(RPrint *p, const char *str, int n) {
 #define memcat(x, y)\
 	{ \
 		memcpy (x, y, strlen (y));\
-		x += strlen (y);\
+		(x) += strlen (y);\
 	}
 	for (s = str, i = 0; s[0]; i++) {
 		int d_inc = 2;
@@ -476,7 +486,9 @@ R_API char* r_print_hexpair(RPrint *p, const char *str, int n) {
 			if (i == ocur - n) {
 				memcat (d, Color_RESET);
 			}
-			memcat (d, lastcol);
+			if (colors) {
+				memcat (d, lastcol);
+			}
 			if (i >= cur - n && i < ocur - n) {
 				memcat (d, Color_INVERT);
 			}
@@ -596,7 +608,9 @@ R_API int r_print_string(RPrint *p, ut64 seek, const ut8 *buf, int len, int opti
 			// TODO: some ascii can be bypassed here
 			p->cb_printf ("%%%02x", b);
 		} else {
-			if ((b == '\n' && !esc_nl) || IS_PRINTABLE (b)) {
+			if (b == '\\') {
+				p->cb_printf ("\\\\");
+			} else if ((b == '\n' && !esc_nl) || IS_PRINTABLE (b)) {
 				p->cb_printf ("%c", b);
 			} else {
 				p->cb_printf ("\\x%02x", b);
@@ -872,9 +886,10 @@ R_API void r_print_hexdump(RPrint *p, ut64 addr, const ut8 *buf, int len, int ba
 	if (p) {
 		p->interrupt = 0;
 	}
+	// is this necessary?
+	r_print_set_screenbounds (p, addr);
 	for (i = j = 0; i < len; i += (stride? stride: inc), j += (stride? stride: 0)) {
-		r_print_set_screenbounds (p, addr + i);
-		if (p && p->cons && p->cons->breaked) {
+		if (p && p->cons && p->cons->context && p->cons->context->breaked) {
 			break;
 		}
 		if (use_sparse) {
@@ -1093,8 +1108,8 @@ static const char* getchardiff(char *fmt, ut8 a, ut8 b) {
 	return fmt;
 }
 
-#define BD(a, b) getbytediff (fmt, a[i + j], b[i + j])
-#define CD(a, b) getchardiff (fmt, a[i + j], b[i + j])
+#define BD(a, b) getbytediff (fmt, (a)[i + j], (b)[i + j])
+#define CD(a, b) getchardiff (fmt, (a)[i + j], (b)[i + j])
 
 static ut8* M(const ut8 *b, int len) {
 	ut8 *r = malloc (len + 16);
@@ -1422,14 +1437,22 @@ R_API void r_print_fill(RPrint *p, const ut8 *arr, int size, ut64 addr, int step
 		if (next < arr[i]) {
 			//if (arr[i]>0 && i>0) p->cb_printf ("  ");
 			if (arr[i] > INC) {
-				for (j = 0; j < next + base; j += INC) p->cb_printf (i? " ": "'");
+				for (j = 0; j < next + base; j += INC) {
+					p->cb_printf (i ? " " : "'");
+				}
 			}
-			for (j = next + INC; j + base < arr[i]; j += INC) p->cb_printf ("_");
+			for (j = next + INC; j + base < arr[i]; j += INC) {
+				p->cb_printf ("_");
+			}
 		} else {
 			if (i == 0) {
-				for (j = INC; j < arr[i] + base; j += INC) p->cb_printf ("'");
+				for (j = INC; j < arr[i] + base; j += INC) {
+					p->cb_printf ("'");
+				}
 			} else {
-				for (j = INC; j < arr[i] + base; j += INC) p->cb_printf (" ");
+				for (j = INC; j < arr[i] + base; j += INC) {
+					p->cb_printf (" ");
+				}
 			}
 		}
 		//for (j=1;j<arr[i]; j+=INC) p->cb_printf (under);
@@ -1622,11 +1645,26 @@ static bool issymbol(char c) {
 	}
 }
 
+static bool check_arg_name (RPrint *print, char *p, ut64 func_addr) {
+	if (func_addr && print->exists_var) {
+		int z;
+		for (z = 0; p[z] && (IS_ALPHA (p[z]) || IS_DIGIT (p[z]) || p[z] == '_'); z++) {
+			;
+		}
+		char tmp = p[z];
+		p[z] = '\0';
+		bool ret = print->exists_var (print, func_addr, p);
+		p[z] = tmp;
+		return ret;
+	}
+	return false;
+}
+
 static bool ishexprefix(char *p) {
 	return (p[0] == '0' && p[1] == 'x');
 }
 
-R_API char* r_print_colorize_opcode(RPrint *print, char *p, const char *reg, const char *num, bool partial_reset) {
+R_API char* r_print_colorize_opcode(RPrint *print, char *p, const char *reg, const char *num, bool partial_reset, ut64 func_addr) {
 	int i, j, k, is_mod, is_float = 0, is_arg = 0;
 	char *reset = partial_reset ? Color_RESET_NOBG : Color_RESET;
 	ut32 c_reset = strlen (reset);
@@ -1702,17 +1740,20 @@ R_API char* r_print_colorize_opcode(RPrint *print, char *p, const char *reg, con
 					eprintf ("r_print_colorize_opcode(): buffer overflow!\n");
 					return strdup (p);
 				}
+
+				bool found_var = check_arg_name (print, p + i + 1, func_addr);
 				strcpy (o + j, reset);
 				j += strlen (reset);
 				o[j] = p[i];
 				if (!(p[i+1] == '$' || ((p[i+1] > '0') && (p[i+1] < '9')))) {
-					ut32 reg_len = strlen (reg);
-					if (reg_len + j + 10 >= COLORIZE_BUFSIZE) {
+					const char *color = found_var ? print->cons->pal.func_var_type : reg;
+					ut32 color_len = strlen (color);
+					if (color_len + j + 10 >= COLORIZE_BUFSIZE) {
 						eprintf ("r_print_colorize_opcode(): buffer overflow!\n");
 						return strdup (p);
 					}
-					strcpy (o + j + 1, reg);
-					j += strlen (reg);
+					strcpy (o + j + 1, color);
+					j += strlen (color);
 				}
 				continue;
 			}

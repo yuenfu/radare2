@@ -1,4 +1,4 @@
-/* radare2 - LGPL - Copyright 2009-2017 - pancake */
+/* radare2 - LGPL - Copyright 2009-2018 - pancake */
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -30,22 +30,33 @@ static const char *help_msg_e[] = {
 
 static const char *help_msg_ec[] = {
 	"Usage ec[s?] [key][[=| ]fg] [bg]", "", "",
-	"ec", "", "list all color keys",
+	"ec", " [key]", "list all/key color keys",
 	"ec*", "", "same as above, but using r2 commands",
 	"ecd", "", "set default palette",
 	"ecr", "", "set random palette (see also scr.randpal)",
 	"ecs", "", "show a colorful palette",
 	"ecj", "", "show palette in JSON",
 	"ecc", " [prefix]", "show palette in CSS",
-	"eco", " dark|white", "load white color scheme template",
+	"eco", " [theme]", "load theme if provided (list available themes if not)",
 	"ecp", "", "load previous color theme",
 	"ecn", "", "load next color theme",
-	"ecH", "[?]", "highlight word or instruction",
+	"ecH", " [?]", "highlight word or instruction",
 	"ec", " prompt red", "change color of prompt",
 	"ec", " prompt red blue", "change color and background of prompt",
-	"", " ", "",
+	"Vars:", "", "",
 	"colors:", "", "rgb:000, red, green, blue, #ff0000, ...",
 	"e scr.color", "=0", "use more colors (0: no color 1: ansi 16, 2: 256, 3: 16M)",
+	"$DATADIR/radare2/cons", "", R_JOIN_2_PATHS ("~", R2_HOME_THEMES) " ./",
+	NULL
+};
+
+static const char *help_msg_eco[] = {
+	"Usage: eco[jc] [theme]", "", "load theme (cf. Path and dir.prefix)",
+	"eco", "", "list available themes",
+	"ecoq", "", "list available themes without showing the current one",
+	"ecoj", "", "list available themes in JSON",
+	"ecoc", "", "display current theme name",
+	"Path:", "", "",
 	"$DATADIR/radare2/cons", "", R_JOIN_2_PATHS ("~", R2_HOME_THEMES) " ./",
 	NULL
 };
@@ -112,6 +123,10 @@ static void list_themes_in_path(RList *list, const char *path) {
 		}
 	}
 	r_list_free (files);
+}
+
+R_API char *r_core_get_theme () {
+	return curtheme;
 }
 
 R_API RList *r_core_list_themes(RCore *core) {
@@ -227,7 +242,6 @@ done:
 }
 
 static int cmd_eval(void *data, const char *input) {
-	char *p;
 	RCore *core = (RCore *)data;
 	switch (input[0]) {
 	case '\0': // "e"
@@ -338,23 +352,41 @@ static int cmd_eval(void *data, const char *input) {
 				if (failed) {
 					eprintf ("Something went wrong\n");
 				}
+			} else if (input[2] == 'c') {
+				eprintf ("%s\n", r_core_get_theme ());
 			} else if (input[2] == '?') {
-				eprintf ("Usage: eco [themename]  ;load theme from "
-					R_JOIN_3_PATHS ("%s", R2_THEMES, "") " (see dir.prefix)\n",
-					r_sys_prefix (NULL));
-
+				r_core_cmd_help (core, help_msg_eco);
+				break;
+			} else if (input[2] == 'q') {
+				RList *themes_list = r_core_list_themes (core);
+				RListIter *th_iter;
+				const char *th;
+				r_list_foreach (themes_list, th_iter, th) {
+					r_cons_printf ("%s\n", th);
+				}
 			} else {
-				nextpal (core, 'l');
+				RList *themes_list = r_core_list_themes (core);
+				RListIter *th_iter;
+				const char *th;
+				r_list_foreach (themes_list, th_iter, th) {
+					if (curtheme && !strcmp (curtheme, th)) {
+						eprintf ("> %s\n", th);
+					} else {
+						eprintf ("  %s\n", th);
+					}
+				}
 			}
 			break;
 		case 's': r_cons_pal_show (); break; // "ecs"
 		case '*': r_cons_pal_list (1, NULL); break; // "ec*"
 		case 'h': // echo
-			if (( p = strchr (input, ' ') )) {
-				r_cons_strcat (p+1);
-				r_cons_newline ();
+			if (input[2] == 'o') {
+				char *p = strchr (input, ' ');
+				if (p) {
+					r_cons_strcat (p + 1);
+					r_cons_newline ();
+				}
 			} else {
-				// "ech"
 				r_cons_pal_list ('h', NULL);
 			}
 			break;
@@ -526,7 +558,9 @@ static int cmd_eval(void *data, const char *input) {
 			eprintf ("Usage: er [key]\n");
 		}
 		break;
-	case ' ': r_config_eval (core->config, input+1); break;
+	case ' ':
+		r_config_eval (core->config, input + 1);
+		break;
 	}
 	return 0;
 }

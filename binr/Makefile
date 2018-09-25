@@ -11,7 +11,7 @@ BINS=rax2 rasm2 rabin2 rahash2 radiff2 radare2 rafind2 rarun2 ragg2 r2agent
 LIBR2=$(call libname-version,libr2.$(EXT_SO),${LIBVERSION})
 
 all: preload
-	@for BINARY in $(BINS) ; do $(MAKE) -C $${BINARY} all; done
+	@for BINARY in $(BINS) ; do $(MAKE) -C $${BINARY} all || exit 1; done
 ifeq ($(COMPILER),ios-sdk)
 	$(MAKE) ios-sign
 endif
@@ -40,7 +40,9 @@ ifeq ($(WITHPIC),1)
 endif
 
 ios_sign ios-sign ios-sdk-sign:
-	for a in $(BINS) ; do xcrun --sdk iphoneos codesign -s- --entitlements radare2/radare2.xml $$a ; done
+	-for a in $(BINS) ; do xcrun --sdk iphoneos codesign -s- --entitlements radare2/radare2.xml $$a ; done
+	-for a in ../libr/*/*.${EXT_SO} ; do xcrun --sdk iphoneos codesign -s- --entitlements radare2/radare2.xml $$a ; done
+	-for a in ../libr/*/p/*.${EXT_SO} ; do xcrun --sdk iphoneos codesign -s- --entitlements radare2/radare2.xml $$a ; done
 
 symstall install-symlink:
 	cd .. && \

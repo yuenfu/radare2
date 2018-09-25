@@ -90,7 +90,7 @@ static void addrom(RList *ret, const char *name, int i, ut64 paddr, ut64 vaddr, 
 	ptr->paddr = paddr;
 	ptr->vaddr = vaddr;
 	ptr->size = ptr->vsize = size;
-	ptr->srwx = R_BIN_SCN_READABLE | R_BIN_SCN_EXECUTABLE;
+	ptr->perm = R_PERM_RX;
 	ptr->add = true;
 	r_list_append (ret, ptr);
 }
@@ -286,7 +286,7 @@ RBinPlugin r_bin_plugin_sfc = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_sfc,
 	.version = R2_VERSION

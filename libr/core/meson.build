@@ -19,8 +19,8 @@ files = [
   #'cmd_help.c',
   #'cmd_info.c',
   #'cmd_log.c',
-  'cmd_macro.c',
-  'cmd_magic.c',
+  #'cmd_macro.c',
+  #'cmd_magic.c',
   #'cmd_meta.c',
   #'cmd_mount.c',
   #'cmd_open.c',
@@ -37,7 +37,7 @@ files = [
   'core.c',
   'cundo.c',
   'disasm.c',
-  'file.c',
+  'cfile.c',
   'fortune.c',
   'gdiff.c',
   'graph.c',
@@ -57,51 +57,61 @@ files = [
   'vmarks.c',
   'vmenus.c',
   'yank.c',
-  'p/core_anal.c',
+  'p/core_a2f.c',
   'p/core_java.c',
 ]
 
-
-includes =  ['../../shlr']
+r_core_inc = []
 if host_machine.system() != 'windows'
-  includes += ['../../shlr/heap/include']
+  r_core_inc += ['../../shlr/heap/include']
+endif
+r_core_inc = [platform_inc, include_directories(r_core_inc)]
+
+
+r_core_deps = [
+  r_util_dep,
+  r_reg_dep,
+  r_syscall_dep,
+  r_search_dep,
+  r_cons_dep,
+  r_anal_dep,
+  r_socket_dep,
+  r_io_dep,
+  r_fs_dep,
+  r_lang_dep,
+  r_magic_dep,
+  r_hash_dep,
+  r_flag_dep,
+  r_parse_dep,
+  r_egg_dep,
+  r_debug_dep,
+  r_crypto_dep,
+  r_config_dep,
+  r_bin_dep,
+  r_asm_dep,
+  r_bp_dep,
+  platform_deps,
+  sdb_dep,
+  spp_dep,
+  gdb_dep,
+  java_dep
+]
+
+if use_libuv
+  r_core_deps += libuv_dep
 endif
 
 r_core = library('r_core', files,
-  include_directories: [
-    platform_inc,
-    include_directories(includes)
-  ],
-  c_args: ['-DCORELIB=1'],
-  link_with: [
-    r_util,
-    r_reg,
-    r_syscall,
-    r_search,
-    r_cons,
-    r_anal,
-    r_socket,
-    r_io,
-    r_fs,
-    r_lang,
-    r_hash,
-    r_flag,
-    r_parse,
-    r_egg,
-    r_debug,
-    r_magic,
-    r_crypto,
-    r_config,
-    r_bin,
-    r_asm,
-    r_bp,
-    libr_shlr
-  ],
-  dependencies: [platform_deps],
+  include_directories: r_core_inc,
+  c_args: library_cflags,
+  dependencies: r_core_deps,
   install: true,
   implicit_include_directories: false,
   soversion: r2_libversion
 )
+
+r_core_dep = declare_dependency(link_with: r_core,
+                                include_directories: r_core_inc)
 
 pkgconfig_mod.generate(
   libraries: [r_core],
@@ -109,7 +119,7 @@ pkgconfig_mod.generate(
   version: r2_version,
   name: 'r_core',
   filebase: 'r_core',
-  requires: [
+  requires: pkgconfig_magic_requires + [
     'r_util',
     'r_reg',
     'r_syscall',
@@ -125,7 +135,6 @@ pkgconfig_mod.generate(
     'r_parse',
     'r_egg',
     'r_debug',
-    'r_magic',
     'r_crypto',
     'r_config',
     'r_bin',

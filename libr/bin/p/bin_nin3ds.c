@@ -1,4 +1,4 @@
-/* radare - LGPL - 2016 - a0rtega */
+/* radare - LGPL - 2018 - a0rtega */
 
 #include <r_types.h>
 #include <r_util.h>
@@ -66,7 +66,7 @@ static RList *sections(RBinFile *bf) {
 			sections[i]->vsize = loaded_header.sections[i].size;
 			sections[i]->paddr = loaded_header.sections[i].offset;
 			sections[i]->vaddr = loaded_header.sections[i].address;
-			sections[i]->srwx = r_str_rwx ("rwx");
+			sections[i]->perm = r_str_rwx ("rwx");
 			sections[i]->add = true;
 		}
 	}
@@ -154,7 +154,7 @@ RBinPlugin r_bin_plugin_nin3ds = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_nin3ds,
 	.version = R2_VERSION

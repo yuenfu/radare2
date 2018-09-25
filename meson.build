@@ -26,7 +26,9 @@ if meson.is_subproject()
   endif
 endif
 
-version_commit = ''
+# by default, not version commit is used
+version_commit = '0'
+
 gittap = ''
 gittip = 'unknown'
 
@@ -97,6 +99,14 @@ if get_option('static_runtime')
     add_project_arguments('/MT', language: 'c')
   endif
 endif
+
+if get_option('default_library') == 'shared'
+  if host_machine.system() != 'windows' or cc.get_id() != 'msvc'
+    add_global_arguments('-fvisibility=hidden', language: 'c')
+  endif
+endif
+
+library_cflags = ['-DCORELIB=1']
 
 if host_machine.system() == 'windows'
   r2_prefix = '.'
@@ -195,7 +205,61 @@ config_h = configure_file(
   configuration: conf_data
 )
 
+# handle magic library
+sys_magic = cc.find_library('magic', required: false)
+use_syslib_magic = false
+
+if sys_magic.found() and get_option('use_sys_magic')
+  use_syslib_magic = true
+endif
+
+# handle xxhash library
+sys_xxhash = dependency('xxhash', required: false)
+use_sys_xxhash = false
+if not sys_xxhash.found()
+  sys_xxhash = cc.find_library('xxhash', required: false)
+endif
+
+if sys_xxhash.found() and get_option('use_sys_xxhash')
+  message('Using system xxhash library')
+  use_sys_xxhash = true
+else
+  message('Using bundled xxhash library')
+endif
+
+# handle openssl library
+sys_openssl = dependency('openssl', required: false)
+use_sys_openssl = false
+if sys_openssl.found() and get_option('use_sys_openssl')
+  message('Using system openssl library')
+  use_sys_openssl = true
+else
+  message('Using bundled openssl code')
+endif
+
+# handle libuv library
+if get_option('use_libuv')
+  libuv_dep = dependency('libuv', required: false)
+  use_libuv = libuv_dep.found()
+  if not libuv_dep.found()
+    warning('use_libuv option was set to true, but libuv was not found.')
+  endif
+else
+  use_libuv = false
+endif
+
+if use_libuv
+  message('Using libuv')
+else
+  message('Not using libuv, thus using fallback server implementations')
+endif
+
 userconf = configuration_data()
+userconf.set('R_CHECKS_LEVEL', get_option('checks_level'))
+userconf.set('HAVE_LIB_MAGIC', sys_magic.found().to_int())
+userconf.set('USE_LIB_MAGIC', use_syslib_magic.to_int())
+userconf.set('HAVE_LIB_XXHASH', sys_xxhash.found().to_int())
+userconf.set('USE_LIB_XXHASH', use_sys_xxhash.to_int())
 userconf.set('DEBUGGER', 1)
 userconf.set('PREFIX', r2_prefix)
 userconf.set('LIBDIR', r2_libdir)
@@ -211,14 +275,15 @@ userconf.set('HUD', r2_hud)
 userconf.set('PLUGINS', r2_plugins)
 userconf.set('EXTRAS', r2_extras)
 userconf.set('BINDINGS', r2_bindings)
-userconf.set('HAVE_LIB_MAGIC', 0)
-userconf.set('USE_LIB_MAGIC', 0)
-userconf.set('HAVE_OPENSSL', 0)
+userconf.set('HAVE_OPENSSL', use_sys_openssl.to_int())
+userconf.set('HAVE_LIBUV', use_libuv.to_int())
 userconf.set('HAVE_FORK', 1)
 userconf.set('WITH_GPL', 1)
 if host_machine.system() == 'windows'
+  userconf.set('DATADIR_R2', r2_datdir)
   userconf.set('HAVE_JEMALLOC', 0)
 else
+  userconf.set('DATADIR_R2', join_paths(get_option('datadir'), 'radare2'))
   userconf.set('HAVE_JEMALLOC', 1)
 endif
 if cc.has_header_symbol('sys/personality.h', 'ADDR_NO_RANDOMIZE')
@@ -226,14 +291,28 @@ if cc.has_header_symbol('sys/personality.h', 'ADDR_NO_RANDOMIZE')
 else
   userconf.set('HAVE_DECL_ADDR_NO_RANDOMIZE', 0)
 endif
+
+if cc.has_function('arc4random_uniform')
+  userconf.set('HAVE_ARC4RANDOM_UNIFORM', 1)
+else
+  userconf.set('HAVE_ARC4RANDOM_UNIFORM', 0)
+endif
+
+if cc.has_function('explicit_bzero')
+  userconf.set('HAVE_EXPLICIT_BZERO', 1)
+else
+  userconf.set('HAVE_EXPLICIT_BZERO', 0)
+endif
+
 r_userconf_h = configure_file(
-  input: 'libr/include/r_userconf.h.in',
+  input: 'libr/include/r_userconf.h.acr',
   output: 'r_userconf.h',
   configuration: userconf,
   install_dir: join_paths(get_option('includedir'), 'libr')
 )
 
 versionconf = configuration_data()
+versionconf.set('MESON_VERSION', meson.version())
 versionconf.set('VERSIONCOMMIT', version_commit)
 versionconf.set('R2_VERSION', r2_version)
 versionconf.set('R2_GITTAP', gittap)
@@ -256,7 +335,7 @@ pcconf.set('VERSION', r2_version)
 libr_pc = configure_file(
   input: 'libr/libr.pc.acr',
   output: 'libr.pc',
-  configuration: userconf,
+  configuration: pcconf,
   install_dir: join_paths(get_option('libdir'), 'pkgconfig')
 )
 
@@ -285,8 +364,6 @@ subdir('libr/fs')
 subdir('libr/debug')
 subdir('libr/core')
 
-subdir('shlr/sdb')
-
 subdir('libr/anal/d')
 subdir('libr/asm/d')
 subdir('libr/bin/d')
@@ -306,30 +383,31 @@ if not meson.is_subproject()
   subdir('binr/radiff2')
   subdir('binr/rafind2')
   subdir('binr/rax2')
+  subdir('binr/r2pm')
 else
   libr2_dep = declare_dependency(
-    link_with: [
-      r_anal,
-      r_asm,
-      r_bin,
-      r_bp,
-      r_config,
-      r_cons,
-      r_core,
-      r_crypto,
-      r_egg,
-      r_flag,
-      r_fs,
-      r_hash,
-      r_io,
-      r_lang,
-      r_magic,
-      r_parse,
-      r_reg,
-      r_search,
-      r_socket,
-      r_syscall,
-      r_util
+    dependencies: [
+      r_anal_dep,
+      r_asm_dep,
+      r_bin_dep,
+      r_bp_dep,
+      r_config_dep,
+      r_cons_dep,
+      r_core_dep,
+      r_crypto_dep,
+      r_egg_dep,
+      r_flag_dep,
+      r_fs_dep,
+      r_hash_dep,
+      r_io_dep,
+      r_lang_dep,
+      r_magic_dep,
+      r_parse_dep,
+      r_reg_dep,
+      r_search_dep,
+      r_socket_dep,
+      r_syscall_dep,
+      r_util_dep
     ],
     include_directories: include_directories('.', 'libr/include'),
     version: r2_version

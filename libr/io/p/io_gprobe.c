@@ -23,7 +23,7 @@
 #include <tchar.h>
 #include <windows.h>
 #else
-#if !__linux__ && !__APPLE__ && !__OpenBSD__ && !__FreeBSD__
+#if !__linux__ && !__APPLE__ && !__OpenBSD__ && !__FreeBSD__ && !__NetBSD__
 #include <stropts.h>
 #endif
 #include <termios.h>
@@ -80,8 +80,9 @@ static ut8 gprobe_checksum_i2c (const ut8 *p, unsigned int size, ut8 initial) {
 	ut8 res = initial;
 	unsigned int k;
 
-	for (k = 0; k < size; ++k)
+	for (k = 0; k < size; ++k) {
 		res ^= p[k];
+	}
 
 	return res;
 }
@@ -711,6 +712,8 @@ static int gprobe_read (struct gport *port, ut32 addr, ut8 *buf, ut32 count) {
 	int res;
 
 	if (!request || !reply) {
+		r_buf_free (request);
+		r_buf_free (reply);
 		return -1;
 	}
 
@@ -754,6 +757,8 @@ static int gprobe_write (struct gport *port, ut32 addr, const ut8 *buf, ut32 cou
 	ut8 count_be[4];
 
 	if (!request || !reply) {
+		r_buf_free (request);
+		r_buf_free (reply);
 		return -1;
 	}
 
@@ -1225,7 +1230,7 @@ RIOPlugin r_io_plugin_gprobe = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_IO,
 	.data = &r_io_plugin_gprobe,
 	.version = R2_VERSION};

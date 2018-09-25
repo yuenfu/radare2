@@ -176,9 +176,15 @@ static struct MACH0_(obj_t) *bin_to_mach0(RBinFile *bf, RDyldBinImage *bin) {
 
 static int prot2perm(int x) {
 	int r = 0;
-	if (x&1) r |= 4;
-	if (x&2) r |= 2;
-	if (x&4) r |= 1;
+	if (x & 1) {
+		r |= 4;
+	}
+	if (x & 2) {
+		r |= 2;
+	}
+	if (x & 4) {
+		r |= 1;
+	}
 	return r;
 }
 
@@ -294,7 +300,7 @@ static RDyldRebaseInfo *get_rebase_info(RBinFile *bf, RDyldCache *cache) {
 	int i;
 	for (i = 0; i < cache->hdr->mappingCount; ++i) {
 		int perm = prot2perm (cache->maps[i].initProt);
-		if (!(perm & R_BIN_SCN_EXECUTABLE)) {
+		if (!(perm & R_PERM_X)) {
 			start_of_data = cache->maps[i].fileOffset;// + bf->o->boffset;
 			break;
 		}
@@ -977,8 +983,8 @@ void symbols_from_bin(RList *ret, RBinFile *bf, RDyldBinImage *bin) {
 		}
 		sym->forwarder = r_str_const ("NONE");
 		sym->bind = r_str_const ((symbols[i].type == R_BIN_MACH0_SYMBOL_TYPE_LOCAL)?
-			"LOCAL": "GLOBAL");
-		sym->type = r_str_const ("FUNC");
+			R_BIN_BIND_LOCAL_STR: R_BIN_BIND_GLOBAL_STR);
+		sym->type = r_str_const (R_BIN_TYPE_FUNC_STR);
 		sym->paddr = symbols[i].offset + bf->o->boffset;
 		sym->size = symbols[i].size;
 		sym->ordinal = i;
@@ -1038,7 +1044,7 @@ static void sections_from_bin(RList *ret, RBinFile *bf, RDyldBinImage *bin) {
 		if (!ptr->vaddr) {
 			ptr->vaddr = ptr->paddr;
 		}
-		ptr->srwx = sections[i].srwx;
+		ptr->perm = sections[i].perm;
 		r_list_append (ret, ptr);
 	}
 	free (sections);
@@ -1074,7 +1080,7 @@ static RList *sections(RBinFile *bf) {
 		ptr->paddr = cache->maps[i].fileOffset;// + bf->o->boffset;
 		ptr->vaddr = cache->maps[i].address;
 		ptr->add = true;
-		ptr->srwx = prot2perm (cache->maps[i].initProt);
+		ptr->perm = prot2perm (cache->maps[i].initProt);
 		r_list_append (ret, ptr);
 	}
 
@@ -1309,7 +1315,7 @@ RBinPlugin r_bin_plugin_dyldcache = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_dyldcache,
 	.version = R2_VERSION

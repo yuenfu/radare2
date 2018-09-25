@@ -114,7 +114,7 @@ static RList *sections(RBinFile *bf) {
 		s->vaddr = dol->text_vaddr[i];
 		s->size = dol->text_size[i];
 		s->vsize = s->size;
-		s->srwx = r_str_rwx ("r-x");
+		s->perm = r_str_rwx ("r-x");
 		s->add = true;
 		r_list_append (ret, s);
 	}
@@ -129,7 +129,7 @@ static RList *sections(RBinFile *bf) {
 		s->vaddr = dol->data_vaddr[i];
 		s->size = dol->data_size[i];
 		s->vsize = s->size;
-		s->srwx = r_str_rwx ("r--");
+		s->perm = r_str_rwx ("r--");
 		s->add = true;
 		r_list_append (ret, s);
 	}
@@ -140,7 +140,7 @@ static RList *sections(RBinFile *bf) {
 	s->vaddr = dol->bss_addr;
 	s->size = dol->bss_size;
 	s->vsize = s->size;
-	s->srwx = r_str_rwx ("rw-");
+	s->perm = r_str_rwx ("rw-");
 	s->add = true;
 	r_list_append (ret, s);
 
@@ -202,7 +202,7 @@ RBinPlugin r_bin_plugin_dol = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_dol,
 	.version = R2_VERSION

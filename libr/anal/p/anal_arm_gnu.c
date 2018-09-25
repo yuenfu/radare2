@@ -20,13 +20,13 @@ static unsigned int disarm_branch_offset(unsigned int pc, unsigned int insoff) {
 	return add + pc + 8;
 }
 
-#define IS_BRANCH(x)  ((x & ARM_BRANCH_I_MASK) == ARM_BRANCH_I)
-#define IS_BRANCHL(x) (IS_BRANCH (x) && (x & ARM_BRANCH_LINK) == ARM_BRANCH_LINK)
-#define IS_RETURN(x)  ((x & (ARM_DTM_I_MASK | ARM_DTM_LOAD | (1 << 15))) == (ARM_DTM_I | ARM_DTM_LOAD | (1 << 15)))
+#define IS_BRANCH(x)  (((x) & ARM_BRANCH_I_MASK) == ARM_BRANCH_I)
+#define IS_BRANCHL(x) (IS_BRANCH (x) && ((x) & ARM_BRANCH_LINK) == ARM_BRANCH_LINK)
+#define IS_RETURN(x)  (((x) & (ARM_DTM_I_MASK | ARM_DTM_LOAD | (1 << 15))) == (ARM_DTM_I | ARM_DTM_LOAD | (1 << 15)))
 // if ( (inst & ( ARM_DTX_I_MASK | ARM_DTX_LOAD  | ( ARM_DTX_RD_MASK ) ) ) == ( ARM_DTX_LOAD | ARM_DTX_I | ( ARM_PC << 12 ) ) )
 #define IS_UNKJMP(x)  ((((ARM_DTX_RD_MASK))) == (ARM_DTX_LOAD | ARM_DTX_I | (ARM_PC << 12)))
-#define IS_LOAD(x)    ((x & ARM_DTX_LOAD) == (ARM_DTX_LOAD))
-#define IS_CONDAL(x)  ((x & ARM_COND_MASK) == ARM_COND_AL)
+#define IS_LOAD(x)    (((x) & ARM_DTX_LOAD) == (ARM_DTX_LOAD))
+#define IS_CONDAL(x)  (((x) & ARM_COND_MASK) == ARM_COND_AL)
 #define IS_EXITPOINT(x) (IS_BRANCH (x) || IS_RETURN (x) || IS_UNKJMP (x))
 
 #define API static
@@ -348,7 +348,8 @@ static int arm_op32(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *data, int le
 
 static ut64 getaddr(ut64 addr, const ut8 *d) {
 	if (d[2] >> 7) {
-		st32 n = (d[0] + (d[1] << 8) + (d[2] << 16) + (0xff << 24));
+		/// st32 n = (d[0] + (d[1] << 8) + (d[2] << 16) + (0xff << 24));
+		st32 n = (d[0] + (d[1] << 8) + (d[2] << 16) + ((ut64)(0xff) << 24)); // * 16777216));
 		n = -n;
 		return addr - (n * 4);
 	}
@@ -474,7 +475,7 @@ RAnalPlugin r_anal_plugin_arm_gnu = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_ANAL,
 	.data = &r_anal_plugin_arm_gnu,
 	.version = R2_VERSION

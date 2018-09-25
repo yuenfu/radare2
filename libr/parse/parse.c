@@ -125,13 +125,17 @@ static char *findNextNumber(char *op) {
 			if (p[0] && p[1] == ';') {
 				// "\x1b[%d;2;%d;%d;%dm", fgbg, r, g, b
 				// "\x1b[%d;5;%dm", fgbg, rgb (r, g, b)
-				for (; p[0] && p[1] && p[0] != 0x1b && p[1] != '\\'; p++);
+				for (; p[0] && p[1] && p[0] != 0x1b && p[1] != '\\'; p++) {
+					;
+				}
 				if (p[0] && p[1] == '\\') {
 					p++;
 				}
 			} else {
 				// "\x1b[%dm", 30 + k
-				for (; *p && *p != 'J' && *p != 'm' && *p != 'H'; p++);
+				for (; *p && *p != 'J' && *p != 'm' && *p != 'H'; p++) {
+					;
+				}
 				if (*p) {
 					p++;
 					if (!*p) {
@@ -156,7 +160,9 @@ static char *findNextNumber(char *op) {
 				}
 				if (!IS_DIGIT (*p)) {
 					char *t = p;
-					for (; *t && *t != ']'; t++);
+					for (; *t && *t != ']'; t++) {
+						;
+					}
 					if (*t == ']') {
 						continue;
 					}
@@ -183,8 +189,12 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 	bool x86 = false;
 	bool computed = false;
 	if (p && p->cur && p->cur->name) {
-		if (strstr (p->cur->name, "x86")) x86 = true;
-		if (strstr (p->cur->name, "m68k")) x86 = true;
+		if (strstr (p->cur->name, "x86")) {
+			x86 = true;
+		}
+		if (strstr (p->cur->name, "m68k")) {
+			x86 = true;
+		}
 	}
 	if (!data || !p) {
 		return 0;
@@ -218,7 +228,9 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 		//		eprintf ("(%s) (%c)\n", optr, *ptr2);
 			}
 		} else {
-			for (ptr2 = ptr; *ptr2 && (*ptr2 != ']' && (*ptr2 != '\x1b') && !IS_SEPARATOR (*ptr2)); ptr2++);
+			for (ptr2 = ptr; *ptr2 && (*ptr2 != ']' && (*ptr2 != '\x1b') && !IS_SEPARATOR (*ptr2)); ptr2++) {
+				;
+			}
 		}
 		off = r_num_math (NULL, ptr);
 		if (off >= p->minval) {
@@ -269,14 +281,16 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 					if (computed && ptr != ptr2 && *ptr) {
 						if (*ptr2 == ']') {
 							ptr2++;
-							for (ptr--; ptr > data && *ptr != '['; ptr--);
+							for (ptr--; ptr > data && *ptr != '['; ptr--) {
+								;
+							}
 							if (ptr == data) {
 								ptr = ptr_backup;
 							}
 						}
 					}
 					*ptr = 0;
-					snprintf (str, len, "%s%s%s", data, flag->name,
+					snprintf (str, len, "%s%s%s", data, f->realnames? flag->realname : flag->name,
 							(ptr != ptr2) ? ptr2 : "");
 					bool banned = false;
 					{
@@ -292,9 +306,14 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 						char *ptr_end = str + strlen (data) + flag_len - 1;
 						char *ptr_right = ptr_end + 1, *ptr_left, *ptr_esc;
 						bool ansi_found = false;
+						if (!*ptr_end) {
+							return true;
+						}
 						while (*ptr_right) {
 							if (*ptr_right == 0x1b) {
-								while (*ptr_right && *ptr_right != 'm') ptr_right++;
+								while (*ptr_right && *ptr_right != 'm') {
+									ptr_right++;
+								}
 								if (*ptr_right) {
 									ptr_right++;
 								}
@@ -313,7 +332,9 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 								if (ptr_left < str) {
 									break;
 								}
-								for (; ptr_esc >= str && *ptr_esc != 0x1b; ptr_esc--);
+								for (; ptr_esc >= str && *ptr_esc != 0x1b; ptr_esc--) {
+									;
+								}
 								if (ptr_esc < str) {
 									ptr_esc = ptr_end - flag_len + 1;
 								}
@@ -321,15 +342,20 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 								if (copied_len < 1) {
 									break;
 								}
+								char *dptr_left;
+								char *dptr_end;
 								memmove (ptr_left, ptr_esc, copied_len);
-#if 1
-								sprintf (ptr_left + copied_len, "%s%s",
-										ansi_found && ptr_right - ptr_end + 1 >= 4 ? "\x1b[0m" : "",
-										ptr_right + 1);
-
-#else
-								strcpy (ptr_left + copied_len, ptr_right + 1);
-#endif
+								dptr_left = strcpy (ptr_left + copied_len,
+										(ansi_found && ptr_right - ptr_end + 1 >= 4) ? Color_RESET : "");
+								int dlen = strlen (dptr_left);
+								dptr_left += dlen;
+								dptr_end = ptr_right + 1;
+								while (*dptr_end) {
+									dptr_end++;
+								}
+								int llen = dptr_end - (ptr_right + 1);
+								memmove (dptr_left, ptr_right + 1, llen);
+								dptr_left[llen] = 0;
 							}
 							break;
 						}
@@ -484,10 +510,9 @@ static int filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_
 	return false;
 }
 
-R_API bool r_parse_immtrim (char *opstr) {
-	bool changed = false;
+R_API char *r_parse_immtrim (char *opstr) {
 	if (!opstr || !*opstr) {
-		return false;
+		return NULL;
 	}
 	char *n = strstr (opstr, "0x");
 	if (n) {
@@ -496,29 +521,23 @@ R_API bool r_parse_immtrim (char *opstr) {
 			p++;
 		}
 		memmove (n, p, strlen (p) + 1);
-		changed = true;
 	}
 	if (strstr (opstr, " - ]")) {
-		r_str_replace (opstr, " - ]", "]", 1);
-		changed = true;
+		opstr = r_str_replace (opstr, " - ]", "]", 1);
 	}
 	if (strstr (opstr, " + ]")) {
-		r_str_replace (opstr, " + ]", "]", 1);
-		changed = true;
+		opstr = r_str_replace (opstr, " + ]", "]", 1);
 	}
 	if (strstr (opstr, ", ]")) {
-		r_str_replace (opstr, ", ]", "]", 1);
-		changed = true;
+		opstr = r_str_replace (opstr, ", ]", "]", 1);
 	}
 	if (strstr (opstr, " - ")) {
-		r_str_replace (opstr, " - ", "-", 1);
-		changed = true;
+		opstr = r_str_replace (opstr, " - ", "-", 1);
 	}
 	if (strstr (opstr, " + ")) {
-		r_str_replace (opstr, " + ", "+", 1);
-		changed = true;
+		opstr = r_str_replace (opstr, " + ", "+", 1);
 	}
-	return changed;
+	return opstr;
 }
 
 R_API int r_parse_filter(RParse *p, RFlag *f, char *data, char *str, int len, bool big_endian) {

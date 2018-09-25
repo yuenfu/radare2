@@ -2,12 +2,17 @@
 
 #include <r_hash.h>
 #include "r_util.h"
+#if USE_LIB_XXHASH
+#include <xxhash.h>
+#else
+#include "xxhash.h"
+#endif
+
 R_LIB_VERSION (r_hash);
 
-struct {
+static const struct {
 	const char *name; ut64 bit;
-}
-static const hash_name_bytes[] = {
+} hash_name_bytes[] = {
 	{ "all", UT64_MAX },
 	{ "xor", R_HASH_XOR },
 	{ "xorpair", R_HASH_XORPAIR },
@@ -154,6 +159,10 @@ R_API ut8 r_hash_mod255(const ut8 *b, ut64 len) {
 		c += b[i];
 	}
 	return c % 255;
+}
+
+R_API ut32 r_hash_xxhash(const ut8 *buf, ut64 len) {
+	return XXH32 (buf, (size_t)len, 0);
 }
 
 R_API ut8 r_hash_deviation(const ut8 *b, ut64 len) {

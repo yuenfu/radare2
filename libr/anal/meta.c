@@ -27,16 +27,18 @@ Keys:
 #include <r_print.h>
 
 #define META_RANGE_BASE(x) ((x)>>12)
-#define META_RANGE_SIZE 0xfff
 #undef DB
 #define DB a->sdb_meta
 
 static char *meta_inrange_get (RAnal *a, ut64 addr, int size) {
+	if (size <= 0) {
+		return NULL;
+	}
 	ut64 base = META_RANGE_BASE (addr);
-	ut64 base2 = META_RANGE_BASE (addr + size) + 1;
-	char * res = NULL;
+	ut64 base2 = META_RANGE_BASE (addr + size - 1);
+	char *res = NULL;
 	// return string array of all the offsets where there are stuff
-	for (; base < base2; base += META_RANGE_SIZE) {
+	for (; base <= base2; base++) {
 		const char *key = sdb_fmt ("range.0x%"PFMT64x, base);
 		// char *r = sdb_array_get (DB, key, 0, 0);
 		char *r = sdb_get (DB, key, 0);
@@ -52,13 +54,15 @@ static char *meta_inrange_get (RAnal *a, ut64 addr, int size) {
 }
 
 static bool meta_inrange_add (RAnal *a, ut64 addr, int size) {
+	if (size <= 0) {
+		return false;
+	}
 	bool set = false;
-	char key[64];
 	ut64 base, base2;
 	base = META_RANGE_BASE (addr);
-	base2 = META_RANGE_BASE (addr + size) + 1;
-	for (; base < base2; base += META_RANGE_SIZE) {
-		snprintf (key, sizeof (key)-1, "range.0x%"PFMT64x, base);
+	base2 = META_RANGE_BASE (addr + size - 1);
+	for (; base <= base2; base++) {
+		const char *key = sdb_fmt ("range.0x%"PFMT64x, base);
 		if (sdb_array_add_num (DB, key, addr, 0)) {
 			set = true;
 		}
@@ -67,18 +71,18 @@ static bool meta_inrange_add (RAnal *a, ut64 addr, int size) {
 }
 
 static bool meta_inrange_del (RAnal *a, ut64 addr, int size) {
+	if (size <= 0) {
+		return false;
+	}
 	bool set = false;
-	char key[64];
 	ut64 base = META_RANGE_BASE (addr);
-	ut64 base2 = META_RANGE_BASE (addr + size) + 1;
-// TODO: optimize this thing?
-	for (; base < base2; base += META_RANGE_SIZE) {
-		snprintf (key, sizeof (key)-1, "range.0x%"PFMT64x, base);
+	ut64 base2 = META_RANGE_BASE (addr + size - 1);
+	for (; base <= base2; base++) {
+		const char *key = sdb_fmt ("range.0x%"PFMT64x, base);
 		if (sdb_array_remove_num (DB, key, addr, 0)) {
 			set = true;
 		}
 	}
-	//sdb_array_del (DB);
 	return set;
 }
 
@@ -222,7 +226,9 @@ R_API int r_meta_del(RAnal *a, int type, ut64 addr, ut64 size) {
 						"meta.%c.0x%"PFMT64x,
 						type, sdb_atoi (s));
 					sdb_unset (DB, key, 0);
-					if (!next) break;
+					if (!next) {
+						break;
+					}
 				}
 				free (dtr);
 			}
@@ -232,10 +238,14 @@ R_API int r_meta_del(RAnal *a, int type, ut64 addr, ut64 size) {
 	if (type == R_META_TYPE_ANY) {
 		/* special case */
 		r_meta_del (a, R_META_TYPE_COMMENT, addr, size);
+		r_meta_del (a, R_META_TYPE_VARTYPE, addr, size);
+	}
+	if (type == R_META_TYPE_COMMENT || type == R_META_TYPE_VARTYPE) {
+		snprintf (key, sizeof (key)-1, "meta.%c.0x%"PFMT64x, type, addr);
+	} else {
+		snprintf (key, sizeof (key)-1, "meta.0x%"PFMT64x, addr);
 	}
 	meta_inrange_del (a, addr, size);
-	snprintf (key, sizeof (key)-1, type == R_META_TYPE_COMMENT ?
-		"meta.C.0x%"PFMT64x : "meta.0x%"PFMT64x, addr);
 	val = sdb_const_get (DB, key, 0);
 	if (val) {
 		if (type == R_META_TYPE_ANY) {
@@ -290,7 +300,9 @@ R_API void r_meta_item_free(void *_item) {
 
 R_API RAnalMetaItem *r_meta_item_new(int type) {
 	RAnalMetaItem *mi = R_NEW0 (RAnalMetaItem);
-	if (mi) mi->type = type;
+	if (mi) {
+		mi->type = type;
+	}
 	return mi;
 }
 
@@ -373,7 +385,8 @@ static int meta_add(RAnal *a, int type, int subtype, ut64 from, ut64 to, const c
 		int idx = sdb_array_indexof (DB, key, value, 0);
 		sdb_array_delete (DB, key, idx, 0);
 	}
-	snprintf (val, sizeof (val)-1, "%c", type);
+	val[0] = type;
+	val[1] = '\0';
 	sdb_array_add (DB, key, val, 0);
 	meta_inrange_add (a, from, to - from);
 	return true;
@@ -446,15 +459,18 @@ R_API RAnalMetaItem *r_meta_find_in(RAnal *a, ut64 at, int type, int where) {
 R_API const char *r_meta_type_to_string(int type) {
 	// XXX: use type as '%c'
 	switch (type) {
-	case R_META_TYPE_HIDE: return "Ch";
-	case R_META_TYPE_CODE: return "Cc";
 	case R_META_TYPE_DATA: return "Cd";
+	case R_META_TYPE_CODE: return "Cc";
 	case R_META_TYPE_STRING: return "Cs";
 	case R_META_TYPE_FORMAT: return "Cf";
 	case R_META_TYPE_MAGIC: return "Cm";
+	case R_META_TYPE_HIDE: return "Ch";
 	case R_META_TYPE_COMMENT: return "CCu";
+	case R_META_TYPE_RUN: return "Cr"; // not in C? help
+	case R_META_TYPE_HIGHLIGHT: return "CH"; // not in C?
+	case R_META_TYPE_VARTYPE: return "Ct";
 	}
-	return "(...)";
+	return "# unknown meta # ";
 }
 
 static bool isFirst = true;
@@ -475,7 +491,7 @@ R_API void r_meta_print(RAnal *a, RAnalMetaItem *d, int rad, bool show_full) {
 			if (!d->subtype) {  /* temporary legacy workaround */
 				esc_bslash = false;
 			}
-			str = r_str_escape_latin1 (d->str, false, esc_bslash);
+			str = r_str_escape_latin1 (d->str, false, esc_bslash, false);
 		}
 	} else {
 		str = r_str_escape (d->str);
@@ -490,6 +506,12 @@ R_API void r_meta_print(RAnal *a, RAnalMetaItem *d, int rad, bool show_full) {
 		} else if (d->type == 'f') {
 			pstr = str;
 		} else if (d->type == 's') {
+			pstr = str;
+		} else if (d->type == 't') {
+			// Sanitize (don't escape) Ct comments so we can see "char *", etc.
+			free (str);
+			str = strdup (d->str);
+			r_str_sanitize (str);
 			pstr = str;
 		} else if (d->type != 'C') {
 			r_name_filter (str, 0);
@@ -541,7 +563,9 @@ R_API void r_meta_print(RAnal *a, RAnalMetaItem *d, int rad, bool show_full) {
 				{
 				const char *type = r_meta_type_to_string (d->type);
 				char *s = sdb_encode ((const ut8*)pstr, -1);
-				if (!s) s = strdup (pstr);
+				if (!s) {
+					s = strdup (pstr);
+				}
 				if (rad) {
 					if (!strcmp (type, "CCu")) {
 						a->cb_printf ("%s base64:%s @ 0x%08"PFMT64x"\n",
@@ -628,6 +652,14 @@ R_API void r_meta_print(RAnal *a, RAnalMetaItem *d, int rad, bool show_full) {
 					}
 				}
 				break;
+			case 't': /* vartype */
+				if (rad) {
+					a->cb_printf ("%s %s @ 0x%08"PFMT64x"\n",
+						r_meta_type_to_string (d->type), pstr, d->from);
+				} else {
+					a->cb_printf ("0x%08"PFMT64x" %s\n", d->from, pstr);
+				}
+				break;
 			default:
 				if (rad) {
 					a->cb_printf ("%s %d 0x%08"PFMT64x" # %s\n",
@@ -643,8 +675,9 @@ R_API void r_meta_print(RAnal *a, RAnalMetaItem *d, int rad, bool show_full) {
 			}
 			break;
 		}
-		if (str)
+		if (str) {
 			free (str);
+		}
 	}
 }
 
@@ -739,8 +772,9 @@ static int meta_unset_cb(void *user, const char *k, const char *v) {
 	RAnalMetaUserItem *ui = user;
 	RAnal *a = ui->anal;
 	RAnalMetaItem it = {0};
-	if (!strstr(k, ".0x"))
+	if (!strstr (k, ".0x")) {
 		return 1;
+	}
 	meta_deserialize (&it, k, v);
 	if (it.space != -1) {
 		it.space = -1;
@@ -764,8 +798,9 @@ static int meta_count_cb(void *user, const char *k, const char *v) {
 	RAnalMetaUserItem *ui = user;
 	myMetaUser *mu = ui->user;
 	RAnalMetaItem it = {0};
-	if (!strstr(k, ".0x"))
+	if (!strstr (k, ".0x")) {
 		return 1;
+	}
 	meta_deserialize (&it, k, v);
 	if (mu) {
 		if (it.space == mu->ctx) {

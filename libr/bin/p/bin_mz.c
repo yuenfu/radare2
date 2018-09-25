@@ -1,4 +1,4 @@
-/* radare - LGPL - Copyright 2015-2017 nodepad */
+/* radare - LGPL - Copyright 2015-2018 nodepad */
 
 #include <r_types.h>
 #include <r_bin.h>
@@ -28,7 +28,7 @@ static bool checkEntrypoint(const ut8 *buf, ut64 length) {
 	pa &= 0xffff;
 	if (pa >= 0x20 && pa + 1 < length) {
 		ut16 pe = r_read_ble16 (buf + 0x3c, false);
-		if (pe < length && length > 0x104 && !memcmp (buf + pe, "PE", 2)) {
+		if (pe + 2 < length && length > 0x104 && !memcmp (buf + pe, "PE", 2)) {
 			return false;
 		}
 		return true;
@@ -168,7 +168,7 @@ static RList * sections(RBinFile *bf) {
 		ptr->vsize = segments[i].size;
 		ptr->paddr = segments[i].paddr;
 		ptr->vaddr = segments[i].paddr;
-		ptr->srwx = r_str_rwx ("rwx");
+		ptr->perm = r_str_rwx ("rwx");
 		ptr->add = true;
 		r_list_append (ret, ptr);
 	}
@@ -194,6 +194,7 @@ static RBinInfo * info(RBinFile *bf) {
 	ret->big_endian = false;
 	ret->has_crypto = false;
 	ret->has_canary = false;
+	ret->has_retguard = -1;
 	ret->has_nx = false;
 	ret->has_pi = false;
 	ret->has_va = false;
@@ -282,7 +283,7 @@ RBinPlugin r_bin_plugin_mz = {
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_BIN,
 	.data = &r_bin_plugin_mz,
 	.version = R2_VERSION

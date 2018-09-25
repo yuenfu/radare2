@@ -79,6 +79,7 @@ R_API RAnal *r_anal_new() {
 	anal->sdb_meta = sdb_ns (anal->sdb, "meta", 1);
 	anal->sdb_hints = sdb_ns (anal->sdb, "hints", 1);
 	anal->sdb_types = sdb_ns (anal->sdb, "types", 1);
+	anal->sdb_fmts = sdb_ns (anal->sdb, "spec", 1);
 	anal->sdb_cc = sdb_ns (anal->sdb, "cc", 1);
 	anal->sdb_zigns = sdb_ns (anal->sdb, "zigns", 1);
 	anal->zign_path = strdup ("");
@@ -87,7 +88,6 @@ R_API RAnal *r_anal_new() {
 	(void)r_anal_xrefs_init (anal);
 	anal->diff_thbb = R_ANAL_THRESHOLDBB;
 	anal->diff_thfcn = R_ANAL_THRESHOLDFCN;
-	anal->split = true; // used from core
 	anal->syscall = r_syscall_new ();
 	r_io_bind_init (anal->iob);
 	r_flag_bind_init (anal->flb);
@@ -188,13 +188,6 @@ R_API bool r_anal_use(RAnal *anal, const char *name) {
 				if (change) {
 					r_anal_set_fcnsign (anal, NULL);
 				}
-	#if 1
-				/* invalidate esil state? really ? */
-				if (anal->esil) {
-					r_anal_esil_free (anal->esil);
-					anal->esil = NULL;
-				}
-	#endif
 				return true;
 			}
 		}
@@ -350,6 +343,14 @@ R_API void r_anal_trace_bb(RAnal *anal, ut64 addr) {
 				break;
 			}
 		}
+	}
+}
+
+R_API void r_anal_colorize_bb(RAnal *anal, ut64 addr, ut32 color) {
+	RAnalBlock *bbi;
+	bbi = r_anal_bb_from_offset (anal, addr);
+	if (bbi) {
+		bbi->colorize = color;
 	}
 }
 

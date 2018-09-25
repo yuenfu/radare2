@@ -134,8 +134,12 @@ static int r_debug_windbg_detach(RDebug *dbg, int pid) {
 }
 
 static char *r_debug_windbg_reg_profile(RDebug *dbg) {
-	if (!dbg) return NULL;
-	if (dbg->arch && strcmp (dbg->arch, "x86")) return NULL;
+	if (!dbg) {
+		return NULL;
+	}
+	if (dbg->arch && strcmp (dbg->arch, "x86")) {
+		return NULL;
+	}
 	if (dbg->bits == R_SYS_BITS_32) {
 #include "native/reg/windows-x86.h"
 	} else if (dbg->bits == R_SYS_BITS_64) {
@@ -146,7 +150,9 @@ static char *r_debug_windbg_reg_profile(RDebug *dbg) {
 
 static int r_debug_windbg_breakpoint(RBreakpoint *bp, RBreakpointItem *b, bool set) {
 	int *tag;
-	if (!b) return false;
+	if (!b) {
+		return false;
+	}
 	// Use a 32 bit word here to keep this compatible with 32 bit hosts
 	tag = (int *)&b->data;
 	return windbg_bkpt (wctx, b->addr, set, b->hw, tag);
@@ -200,6 +206,36 @@ static int r_debug_windbg_select(int pid, int tid) {
 	return true;
 }
 
+static RList *r_debug_windbg_threads(RDebug *dbg, int pid) {
+	RListIter *it;
+	WindThread *t;
+
+	RList *ret = r_list_newf (free);
+	if (!ret) {
+		return NULL;
+	}
+
+	RList *threads = windbg_list_threads (wctx);
+	if (!threads) {
+		r_list_free (ret);
+		return NULL;
+	}
+
+	r_list_foreach (threads, it, t) {
+		RDebugPid *newpid = R_NEW0 (RDebugPid);
+		if (!newpid) {
+			r_list_free (ret);
+			return NULL;
+		}
+		newpid->pid = t->uniqueid;
+		newpid->status = t->status;
+		newpid->runnable = t->runnable;
+		r_list_append (ret, newpid);
+	}
+
+	return ret;
+}
+
 RDebugPlugin r_debug_plugin_windbg = {
 	.name = "windbg",
 	.license = "LGPL3",
@@ -213,14 +249,15 @@ RDebugPlugin r_debug_plugin_windbg = {
 	.pids = &r_debug_windbg_pids,
 	.wait = &r_debug_windbg_wait,
 	.select = &r_debug_windbg_select,
-	.breakpoint = (RBreakpointCallback)&r_debug_windbg_breakpoint,
+	.breakpoint = r_debug_windbg_breakpoint,
 	.reg_read = &r_debug_windbg_reg_read,
 	.reg_write = &r_debug_windbg_reg_write,
-	.reg_profile = &r_debug_windbg_reg_profile
+	.reg_profile = &r_debug_windbg_reg_profile,
+	.threads = &r_debug_windbg_threads
 };
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_DBG,
 	.data = &r_debug_plugin_windbg,
 	.version = R2_VERSION

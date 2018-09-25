@@ -76,8 +76,6 @@ static void opex(RStrBuf *buf, csh handle, cs_insn *insn) {
 	r_strbuf_append (buf, "]}");
 }
 
-#define ZERO_FILL(x) memset (&x, 0, sizeof (x))
-
 static int parse_reg_name(RRegItem *reg, csh handle, cs_insn *insn, int reg_num) {
 	if (!reg) {
 		return -1;
@@ -99,7 +97,7 @@ static int parse_reg_name(RRegItem *reg, csh handle, cs_insn *insn, int reg_num)
 
 static void op_fillval(RAnalOp *op, csh handle, cs_insn *insn) {
 	static RRegItem reg;
-	switch (op->type) {
+	switch (op->type & R_ANAL_OP_TYPE_MASK) {
 	case R_ANAL_OP_TYPE_MOV:
 		ZERO_FILL (reg);
 		if (OPERAND(1).type == M68K_OP_MEM) {
@@ -147,22 +145,30 @@ static int analop(RAnal *a, RAnalOp *op, ut64 addr, const ut8 *buf, int len) {
 // XXX no arch->cpu ?!?! CS_MODE_MICRO, N64
 	op->delay = 0;
 	// replace this with the asm.features?
-	if (a->cpu && strstr (a->cpu, "68000"))
+	if (a->cpu && strstr (a->cpu, "68000")) {
 		mode |= CS_MODE_M68K_000;
-	if (a->cpu && strstr (a->cpu, "68010"))
+	}
+	if (a->cpu && strstr (a->cpu, "68010")) {
 		mode |= CS_MODE_M68K_010;
-	if (a->cpu && strstr (a->cpu, "68020"))
+	}
+	if (a->cpu && strstr (a->cpu, "68020")) {
 		mode |= CS_MODE_M68K_020;
-	if (a->cpu && strstr (a->cpu, "68030"))
+	}
+	if (a->cpu && strstr (a->cpu, "68030")) {
 		mode |= CS_MODE_M68K_030;
-	if (a->cpu && strstr (a->cpu, "68040"))
+	}
+	if (a->cpu && strstr (a->cpu, "68040")) {
 		mode |= CS_MODE_M68K_040;
-	if (a->cpu && strstr (a->cpu, "68060"))
+	}
+	if (a->cpu && strstr (a->cpu, "68060")) {
 		mode |= CS_MODE_M68K_060;
+	}
 	op->size = 4;
 	if (handle == 0) {
 		ret = cs_open (CS_ARCH_M68K, mode, &handle);
-		if (ret != CS_ERR_OK) goto fin;
+		if (ret != CS_ERR_OK) {
+			goto fin;
+		}
 		cs_option (handle, CS_OPT_DETAIL, CS_OPT_ON);
 	}
 	n = cs_disasm (handle, (ut8*)buf, len, addr, 1, &insn);
@@ -224,12 +230,19 @@ static int analop(RAnal *a, RAnalOp *op, ut64 addr, const ut8 *buf, int len) {
 	case M68K_INS_BLT:
 	case M68K_INS_BGT:
 	case M68K_INS_BLE:
+#if CS_API_MAJOR >= 4
 		if (m68k->operands[0].type == M68K_OP_BR_DISP) {
 			op->type = R_ANAL_OP_TYPE_CJMP;
 			// TODO: disp_size is ignored
 			op->jump = addr + m68k->operands[0].br_disp.disp + 2;
 			op->fail = addr + insn->size;
 		}
+#else
+		op->type = R_ANAL_OP_TYPE_CJMP;
+		// TODO: disp_size is ignored
+		op->jump = addr + m68k->operands[0].br_disp.disp + 2;
+		op->fail = addr + insn->size;
+#endif
 		break;
 	case M68K_INS_BRA:
 		op->type = R_ANAL_OP_TYPE_JMP;
@@ -738,7 +751,7 @@ RAnalPlugin r_anal_plugin_m68k_cs = {
 #endif
 
 #ifndef CORELIB
-RLibStruct radare_plugin = {
+R_API RLibStruct radare_plugin = {
 	.type = R_LIB_TYPE_ANAL,
 	.data = &r_anal_plugin_m68k_cs,
 	.version = R2_VERSION
