@@ -540,7 +540,65 @@ void anal_b(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 
 void anal_c(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
 {
+    ut8 opc = ((*buf)&0xC)>>2; //[27:26]
+    //ut8 ra = ((*(buf))&0x3)<<3 | ((*(buf+1))&0xe0)>>5; //[25:21]
+    //ut8 rb = ((*(buf+1))&0x1F); //[20:16]
+    ut32 iv = *(buf+2)<<8 | *(buf+3); //[15:0]
+
     op->size = 4;
+    switch (opc) {
+        case 0: //sb
+            op->type = R_ANAL_OP_TYPE_STORE;
+            iv = extend_signed(iv, 16);
+            break;
+        case 1: //lbz
+            op->type = R_ANAL_OP_TYPE_LOAD;
+            iv = extend_signed(iv, 16);
+            break;
+        case 2:
+            if ((*(buf+2)&0x80) == 0) { //sh //[15]
+                op->type = R_ANAL_OP_TYPE_STORE;
+                iv = extend_signed(iv, 15);
+                iv <<= 1;
+            }
+            else { //lhz
+                op->type = R_ANAL_OP_TYPE_LOAD;
+                iv = extend_signed(iv, 15);
+                iv <<= 1;
+            }
+            break;
+        case 3:
+            switch (((*(buf+2))&0xC0)>>6) { //[15:14]
+                case 0: //sw
+                    op->type = R_ANAL_OP_TYPE_STORE;
+                    iv = extend_signed(iv, 14);
+                    iv <<= 2;
+                    break;
+                case 1: //lwz
+                    op->type = R_ANAL_OP_TYPE_LOAD;
+                    iv = extend_signed(iv, 14);
+                    iv <<= 2;
+                    break;
+                case 2: //lws
+                    op->type = R_ANAL_OP_TYPE_LOAD;
+                    iv = extend_signed(iv, 14);
+                    iv <<= 2;
+                    break;
+                case 3:
+                    if ((*(buf+2)&0x20) == 0) { //sd //[13]
+                        op->type = R_ANAL_OP_TYPE_STORE;
+                        iv = extend_signed(iv, 13);
+                        iv <<= 3;
+                    }
+                    else { //ld
+                        op->type = R_ANAL_OP_TYPE_LOAD;
+                        iv = extend_signed(iv, 13);
+                        iv <<= 3;
+                    }
+                    break;
+            }
+            break;
+    }
 }
 
 void anal_d(RAnal *anal, RAnalOp *op, ut64 addr, const ut8 *buf, int len)
